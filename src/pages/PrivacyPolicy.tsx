@@ -18,7 +18,7 @@ import {
   Eye,
   FileText,
 } from "lucide-react";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function Logo() {
   return (

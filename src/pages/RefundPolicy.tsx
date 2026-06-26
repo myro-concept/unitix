@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Menu, X, CalendarClock, CheckCircle2, XCircle, Mail, Phone, ShieldCheck, Clock, AlertCircle, RefreshCw } from "lucide-react";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function Logo() {
   return (

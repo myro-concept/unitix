@@ -180,7 +180,7 @@ const Events = () => {
                 >
                   <div className="sm:w-56 flex-shrink-0 aspect-video sm:aspect-[16/10] rounded-xl overflow-hidden bg-muted">
                     {event.background_image_url ? (
-                      <img src={event.background_image_url} alt={event.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <img src={event.background_image_url} alt={event.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <CalendarDays className="w-10 h-10 text-muted-foreground/30" />

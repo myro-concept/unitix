@@ -29,7 +29,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { z } from "zod";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function Logo() {
   return (

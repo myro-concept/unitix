@@ -32,7 +32,7 @@ import eventHackathon from "@/assets/event-hackathon-ai.jpg";
 import eventJam from "@/assets/event-late-night-jam.jpg";
 import eventStartup from "@/assets/event-startup-weekend.jpg";
 import eventSummit from "@/assets/event-vibe-coding-summit.jpg";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 
@@ -233,6 +233,7 @@ function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
         <img
           src={logoGlyph}
           alt="UniTix"
+          decoding="async"
           style={{
             width: "100%",
             height: "100%",
@@ -268,7 +269,7 @@ function EventCard({ event, index }: { event: LandingEvent; index: number }) {
       className="event-card"
     >
       <div className="event-img-wrap">
-        {event.img ? <img src={event.img} alt={event.title} className="event-img" /> : <div className="event-fallback"><Ticket size={42} /></div>}
+        {event.img ? <img src={event.img} alt={event.title} className="event-img" loading="lazy" decoding="async" /> : <div className="event-fallback"><Ticket size={42} /></div>}
         <span className="image-date-pill">
           <CalendarDays size={14} />
           {event.date}
@@ -454,7 +455,7 @@ function TestimonialCarousel() {
           >
             <div className="testimonial-card">
               <div className="testimonial-image">
-                <img src={t.avatar} alt={t.name} />
+                <img src={t.avatar} alt={t.name} loading="lazy" decoding="async" />
               </div>
               <div className="testimonial-content">
                 <div className="stars">
@@ -2385,7 +2386,7 @@ export default function Landing() {
                 transition={{ type: "spring", stiffness: 260, damping: 20, delay: card.delay }}
               >
                 <div className="hero-card-inner" style={{ transform: card.rotate }}>
-                  <img src={card.img} alt={card.tag} />
+                  <img src={card.img} alt={card.tag} decoding="async" fetchPriority="high" />
                   <div>
                     <div>
                       <span>{card.tag}</span>
@@ -2437,7 +2438,7 @@ export default function Landing() {
               </div>
 
               <div className="mobile-hero-card">
-                <img src={eventSummit} alt="Campus event" />
+                <img src={eventSummit} alt="Campus event" decoding="async" fetchPriority="high" />
                 <div>
                   <span>Campus Event</span>
                 </div>

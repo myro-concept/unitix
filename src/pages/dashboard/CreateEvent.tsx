@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateEvent, useUpdateEvent, useEvent } from "@/hooks/useEvents";

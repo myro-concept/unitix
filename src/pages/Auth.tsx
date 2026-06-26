@@ -10,7 +10,7 @@ import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function AuthLogo() {
   return (

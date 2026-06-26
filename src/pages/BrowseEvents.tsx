@@ -5,7 +5,7 @@ import {
   ArrowRight, Bookmark, CalendarDays, Instagram, MapPin, Menu,
   Music2, Search, Share2, Ticket, Twitter, MessageCircle, X,
 } from "lucide-react";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 
@@ -74,7 +74,7 @@ function Logo() {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-8 h-8 rounded-[10px] bg-[#FF0048] flex items-center justify-center overflow-hidden">
-        <img src={logoGlyph} alt="UniTix" className="w-full h-full object-contain" />
+        <img src={logoGlyph} alt="UniTix" className="w-full h-full object-contain" decoding="async" />
       </div>
 
       <span
@@ -177,7 +177,7 @@ function EventCard({ event, index }: { event: EventCardItem; index: number }) {
   return (
     <motion.a href={href} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.42, delay: index * 0.06 }} className="event-card">
       <div className="event-img-wrap">
-        {event.img ? <img src={event.img} alt={event.title} className="event-img" /> : <div className="event-fallback"><Ticket size={42} /></div>}
+        {event.img ? <img src={event.img} alt={event.title} className="event-img" loading="lazy" decoding="async" /> : <div className="event-fallback"><Ticket size={42} /></div>}
         <span className="image-date-pill">
           <CalendarDays size={14} />
           {event.date}

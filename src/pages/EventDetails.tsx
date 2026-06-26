@@ -27,7 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useEventBySlug } from "@/hooks/useEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 type OrganizerProfile = {
   id: string;
@@ -1414,7 +1414,7 @@ export default function EventDetails() {
       <main>
         <section className="hero-bg-section">
           {flyer ? (
-            <img src={flyer} alt={event.name} className="hero-bg-img" />
+            <img src={flyer} alt={event.name} className="hero-bg-img" decoding="async" fetchPriority="high" />
           ) : (
             <div className="hero-bg-fallback" />
           )}

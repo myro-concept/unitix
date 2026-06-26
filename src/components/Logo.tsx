@@ -1,4 +1,4 @@
-import logoGlyph from "@/assets/logo-glyph.png";
+import logoGlyph from "@/assets/logo-glyph-160.png";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg";
@@ -19,6 +19,7 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
       <img
         src={logoGlyph}
         alt="UniTix"
+        decoding="async"
         className={`${s.glyph} object-contain`}
       />
 
