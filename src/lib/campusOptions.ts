@@ -1,0 +1,16 @@
+export const CAMPUS_OPTIONS = [
+  "UNILAG",
+  "LASU",
+  "OAU",
+  "DOU",
+  "DELSU",
+  "YABATECH",
+  "COVENANT",
+  "UNIABUJA",
+  "UI",
+  "FUTA",
+  "UNIPORT",
+  "ABU Zaria",
+  "UNIBEN",
+  "Other",
+];
