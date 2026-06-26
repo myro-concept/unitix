@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Menu, X, CalendarClock, CheckCircle2, XCircle, Mail, Phone, ShieldCheck, Clock, AlertCircle, RefreshCw } from "lucide-react";
+import logoGlyph from "@/assets/logo-glyph.png";
 
 function Logo() {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-8 h-8 rounded-[10px] bg-[#FF0048] flex items-center justify-center overflow-hidden">
-        <img src="/logo.png" alt="UniTix" className="w-full h-full object-contain" />
+        <img src={logoGlyph} alt="UniTix" className="w-full h-full object-contain" />
       </div>
       <span className="font-extrabold tracking-[-0.03em]" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: "20px" }}>
         UniTix

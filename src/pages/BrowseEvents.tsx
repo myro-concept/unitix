@@ -5,6 +5,7 @@ import {
   ArrowRight, Bookmark, CalendarDays, Instagram, MapPin, Menu,
   Music2, Search, Share2, Ticket, Twitter, MessageCircle, X,
 } from "lucide-react";
+import logoGlyph from "@/assets/logo-glyph.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 
@@ -73,7 +74,7 @@ function Logo() {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-8 h-8 rounded-[10px] bg-[#FF0048] flex items-center justify-center overflow-hidden">
-        <img src="/logo.png" alt="UniTix" className="w-full h-full object-contain" />
+        <img src={logoGlyph} alt="UniTix" className="w-full h-full object-contain" />
       </div>
 
       <span

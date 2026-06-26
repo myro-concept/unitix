@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useEventBySlug } from "@/hooks/useEvents";
+import logoGlyph from "@/assets/logo-glyph.png";
 
 interface ContactInfo {
   firstName: string;
@@ -293,7 +294,7 @@ const Checkout = () => {
         <div className="checkout-nav-inner">
           <a href="/" className="checkout-logo">
             <div className="checkout-logo-mark" style={{ width:34, height:34, borderRadius:9, overflow:'hidden', background:'#FF0048', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <img src="/logo.png" alt="UniTix" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:'9px' }} />
+              <img src={logoGlyph} alt="UniTix" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:'9px' }} />
             </div>
             <span style={{ fontSize:18, fontFamily:"'Bricolage Grotesque', sans-serif", fontWeight:800, letterSpacing:'-0.02em', color:'#111111' }}>UniTix</span>
           </a>
@@ -659,7 +660,7 @@ const Checkout = () => {
             <div className="checkout-footer-about">
               <a href="/" className="checkout-logo">
                 <div className="checkout-logo-mark" style={{ width:34, height:34, borderRadius:9, overflow:'hidden', background:'#FF0048', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <img src="/logo.png" alt="UniTix" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:'9px' }} />
+                  <img src={logoGlyph} alt="UniTix" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:'9px' }} />
                 </div>
                 <span style={{ fontSize:18, fontFamily:"'Bricolage Grotesque', sans-serif", fontWeight:800, letterSpacing:'-0.02em', color:'#111111' }}>UniTix</span>
               </a>

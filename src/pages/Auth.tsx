@@ -10,12 +10,13 @@ import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import logoGlyph from "@/assets/logo-glyph.png";
 
 function AuthLogo() {
   return (
     <div className="flex items-center justify-center gap-2">
       <div className="h-10 w-10 rounded-xl bg-[#FF0048] flex items-center justify-center overflow-hidden">
-        <img src="/logo.png" alt="UniTix" className="h-full w-full object-contain" />
+        <img src={logoGlyph} alt="UniTix" className="h-full w-full object-contain" />
       </div>
       <span
         className="text-2xl font-extrabold tracking-tight text-foreground"

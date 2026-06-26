@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useEventBySlug } from "@/hooks/useEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logoGlyph from "@/assets/logo-glyph.png";
 
 type OrganizerProfile = {
   id: string;
@@ -71,7 +72,7 @@ function Logo() {
   return (
     <div className="ut-logo">
       <div className="ut-logo-mark">
-        <img src="/logo.png" alt="UniTix" />
+        <img src={logoGlyph} alt="UniTix" />
       </div>
       <span>UniTix</span>
     </div>

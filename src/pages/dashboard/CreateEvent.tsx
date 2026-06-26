@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import logoGlyph from "@/assets/logo-glyph.png";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateEvent, useUpdateEvent, useEvent } from "@/hooks/useEvents";
@@ -415,7 +416,7 @@ export default function CreateEvent() {
       <div className="relative mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <Link to="/dashboard/events" className="inline-flex items-center gap-2 no-underline">
-            <img src="/logo.png" alt="UniTix" className="h-9 w-9 rounded-[10px] object-contain" />
+            <img src={logoGlyph} alt="UniTix" className="h-9 w-9 rounded-[10px] object-contain" />
             <span className="font-display text-[22px] font-black tracking-[-0.04em] text-[#111111]">
               UniTix
             </span>

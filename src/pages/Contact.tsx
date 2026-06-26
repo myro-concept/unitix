@@ -29,13 +29,14 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { z } from "zod";
+import logoGlyph from "@/assets/logo-glyph.png";
 
 function Logo() {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-8 h-8 rounded-[10px] bg-[#FF0048] flex items-center justify-center overflow-hidden">
         <img
-          src="/logo.png"
+          src={logoGlyph}
           alt="UniTix"
           className="w-full h-full object-contain"
         />

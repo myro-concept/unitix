@@ -32,6 +32,7 @@ import eventHackathon from "@/assets/event-hackathon-ai.jpg";
 import eventJam from "@/assets/event-late-night-jam.jpg";
 import eventStartup from "@/assets/event-startup-weekend.jpg";
 import eventSummit from "@/assets/event-vibe-coding-summit.jpg";
+import logoGlyph from "@/assets/logo-glyph.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 
@@ -230,7 +231,7 @@ function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
     <div className="logo">
       <div className="logo-mark" style={{ width: sz, height: sz }}>
         <img
-          src="/logo.png"
+          src={logoGlyph}
           alt="UniTix"
           style={{
             width: "100%",
