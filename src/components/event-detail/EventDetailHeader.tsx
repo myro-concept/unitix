@@ -23,7 +23,7 @@ export default function EventDetailHeader({ event, onStatusChange }: Props) {
   const navigate = useNavigate();
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/register/${event.slug}`;
+    const url = `${window.location.origin}/${event.slug}`;
     navigator.clipboard.writeText(url);
     toast.success("Registration link copied!");
   };
@@ -64,7 +64,7 @@ export default function EventDetailHeader({ event, onStatusChange }: Props) {
             <Copy className="w-3 h-3 mr-1" /> Copy link
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs rounded-full" asChild>
-            <a href={`/register/${event.slug}`} target="_blank" rel="noopener noreferrer">
+            <a href={`/${event.slug}`} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="w-3 h-3 mr-1" /> Preview
             </a>
           </Button>
@@ -92,7 +92,7 @@ export default function EventDetailHeader({ event, onStatusChange }: Props) {
                 <Copy className="w-3.5 h-3.5 mr-2" /> Copy Link
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <a href={`/register/${event.slug}`} target="_blank" rel="noopener noreferrer">
+                <a href={`/${event.slug}`} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="w-3.5 h-3.5 mr-2" /> Preview
                 </a>
               </DropdownMenuItem>

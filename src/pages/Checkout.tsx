@@ -88,6 +88,7 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
+  const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 
   const checkoutState = (location.state as CheckoutState) || {
     ticketId: "",
@@ -195,6 +196,12 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
+      if (!paystackPublicKey) {
+        toast.error("Payment is not configured yet. Add VITE_PAYSTACK_PUBLIC_KEY before launch.");
+        setIsProcessing(false);
+        return;
+      }
+
       if (!(window as any).PaystackPop || !paystackReady) {
         toast.error("Payment gateway is not ready yet. Please try again.");
         setIsProcessing(false);
@@ -202,7 +209,7 @@ const Checkout = () => {
       }
 
       const handler = (window as any).PaystackPop.setup({
-        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_0838dcdb033d9740f48ae762f3e6c260becc25cf",
+        key: paystackPublicKey,
         email: finalAttendee.email,
         amount: total * 100,
         ref: `${event.id}-${Date.now()}`,

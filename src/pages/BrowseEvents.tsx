@@ -237,7 +237,7 @@ export default function Events() {
       if (!mounted) return;
 
       if (eventsError) {
-        console.log("Events error:", eventsError);
+        console.error("Events error:", eventsError);
         setLiveEvents([]);
         setLoading(false);
         return;
@@ -251,7 +251,7 @@ export default function Events() {
         .in("id", userIds);
 
       if (profilesError) {
-        console.log("Profiles error:", profilesError);
+        console.error("Profiles error:", profilesError);
       }
 
       const profilesMap = new Map(
@@ -266,10 +266,6 @@ export default function Events() {
           profiles: profile || null,
         } as PublicEvent);
       });
-
-console.log("eventsData:", eventsData);
-console.log("profilesData:", profilesData);
-
       setLiveEvents(mappedEvents);
       setLoading(false);
     }

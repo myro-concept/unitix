@@ -137,7 +137,7 @@ const EventDetail = () => {
               </div>
             </div>
             <EventQRCode
-              registrationUrl={`${window.location.origin}/register/${event.slug}`}
+              registrationUrl={`${window.location.origin}/${event.slug}`}
               eventName={event.name}
             />
           </div>
