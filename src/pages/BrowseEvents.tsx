@@ -624,6 +624,7 @@ export default function Events() {
             margin-bottom: 28px;
         }
 
+        .events-head h1,
         .events-head h2 {
             font-size: clamp(28px, 4vw, 42px);
             line-height: 1.06;
