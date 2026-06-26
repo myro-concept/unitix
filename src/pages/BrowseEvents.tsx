@@ -1308,7 +1308,7 @@ export default function Events() {
                   >
                   BROWSE EVENTS
                 </motion.p>
-                <h2>Popular events on UniTix</h2>
+                <h1>Popular events on UniTix</h1>
                 <p>Discover the hottest campus parties, concerts, and hangouts happening near you across Nigeria.</p>
               </div>
             </div>

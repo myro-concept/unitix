@@ -104,6 +104,9 @@ const Auth = () => {
           <Link to="/" className="inline-block">
             <AuthLogo />
           </Link>
+          <h1 className="mt-4 text-2xl font-display font-black tracking-tight text-foreground">
+            Campus Event Tickets on UniTix
+          </h1>
           <p className="text-muted-foreground mt-3 text-sm font-body">
             Discover campus events, buy tickets, and manage entry with ease.
           </p>
