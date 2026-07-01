@@ -104,7 +104,7 @@ export default function PrivacyPolicy() {
           position: sticky;
           top: 0;
           z-index: 10001;
-          background: rgba(250, 250, 249, 0.94);
+          background: #ffffff;
           border-bottom: 1px solid #e5e7eb;
         }
 

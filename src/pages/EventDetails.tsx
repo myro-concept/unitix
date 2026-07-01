@@ -470,7 +470,7 @@ export default function EventDetails() {
           left: 0;
           right: 0;
           z-index: 9999;
-          background: rgba(250, 250, 249, 0.94);
+          background: #ffffff;
           border-bottom: 1px solid #e5e7eb;
         }
 
@@ -1265,7 +1265,7 @@ export default function EventDetails() {
           left: 0;
           right: 0;
           z-index: 9999;
-          background: rgba(250, 250, 249, 0.94);
+          background: #ffffff;
           border-bottom: 1px solid #e5e7eb;
         }
 

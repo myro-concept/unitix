@@ -3,8 +3,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Bookmark, CalendarDays, Instagram, MapPin, Menu,
-  Music2, Search, Share2, Ticket, Twitter, MessageCircle, X,
+  ArrowRight,
+  Bookmark,
+  CalendarDays,
+  ChevronDown,
+  Instagram,
+  MapPin,
+  Menu,
+  Music2,
+  Search,
+  Share2,
+  Ticket,
+  Twitter,
+  MessageCircle,
+  Filter,
+  X,
 } from "lucide-react";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,11 +36,11 @@ type PublicEvent = {
   status?: string | null;
   user_id?: string | null;
   profiles?: {
-  id?: string;
-  school?: string | null;
-  company?: string | null;
-  full_name?: string | null;
-} | null;
+    id?: string;
+    school?: string | null;
+    company?: string | null;
+    full_name?: string | null;
+  } | null;
 };
 
 type EventCardItem = {
@@ -41,14 +54,13 @@ type EventCardItem = {
   tag: string;
   date: string;
   time: string;
+  eventDateKey: string;
   img?: string;
   likes: number;
 };
 
 const INITIAL_VISIBLE_EVENTS = 9;
 const LOAD_MORE_STEP = 9;
-
-const campusChips = ["All Schools", ...CAMPUS_OPTIONS.filter((item) => item !== "Other")];
 
 const footerLinks = {
   Platform: [
@@ -101,6 +113,19 @@ function formatDate(date?: string | null) {
   return Number.isNaN(d.getTime()) ? "Date TBA" : d.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
 }
 
+function formatDateKey(date?: string | null) {
+  if (!date) return "";
+
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function mapLiveEvent(event: PublicEvent): EventCardItem {
   const price = Number(event.ticket_price || 0);
 
@@ -134,6 +159,7 @@ function mapLiveEvent(event: PublicEvent): EventCardItem {
     tag: price > 0 ? `From ₦${price.toLocaleString()}` : "Free",
     date: formattedDate,
     time: formattedTime,
+    eventDateKey: formatDateKey(event.event_date),
     img: event.background_image_url || undefined,
     likes: 0,
   };
@@ -172,7 +198,6 @@ function CalendarGraphic() {
     </motion.div>
   );
 }
-
 function EventCard({ event, index }: { event: EventCardItem; index: number }) {
   const href = `/${event.slug}`;
   return (
@@ -180,8 +205,7 @@ function EventCard({ event, index }: { event: EventCardItem; index: number }) {
       <div className="event-img-wrap">
         {event.img ? <img src={event.img} alt={event.title} className="event-img" loading="lazy" decoding="async" /> : <div className="event-fallback"><Ticket size={42} /></div>}
         <span className="image-date-pill">
-          <CalendarDays size={14} />
-          {event.date}
+          {event.category.toLowerCase()}
         </span>
         <span className="price-pill">{event.tag}</span>
       </div>
@@ -193,7 +217,6 @@ function EventCard({ event, index }: { event: EventCardItem; index: number }) {
             {event.date}
             {event.time && <> • {event.time}</>}
           </span>
-          <span className="event-category">{event.category}</span>
           <span className="event-school">{event.school}</span>
         </div>
         <h3>{event.title}</h3>
@@ -217,11 +240,18 @@ function EventCard({ event, index }: { event: EventCardItem; index: number }) {
 
 export default function Events() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeCampus, setActiveCampus] = useState("All Schools");
+  const [selectedSchool, setSelectedSchool] = useState("All Schools");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileFilterView, setMobileFilterView] = useState<"all" | "campus" | "dates">("all");
+  const [openMobileSection, setOpenMobileSection] = useState<"campus" | "dates" | "results" | null>("campus");
+  const [campusSearch, setCampusSearch] = useState("");
+  const [resultsPerFetch, setResultsPerFetch] = useState(12);
   const [search, setSearch] = useState("");
   const [liveEvents, setLiveEvents] = useState<EventCardItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleEventsCount, setVisibleEventsCount] = useState(INITIAL_VISIBLE_EVENTS);
+  const [visibleEventsCount, setVisibleEventsCount] = useState(12);
   const [loadMoreMessage, setLoadMoreMessage] = useState("");
 
   useEffect(() => {
@@ -286,16 +316,20 @@ export default function Events() {
       event.campus.toLowerCase().includes(q) ||
       event.category.toLowerCase().includes(q);
 
-    const matchesCampus =
-      activeCampus === "All Schools" ||
-      event.school.toLowerCase().includes(activeCampus.toLowerCase());
-    return matchesSearch && matchesCampus;
-  }), [allEvents, activeCampus, search]);
+    const matchesSchool =
+      selectedSchool === "All Schools" ||
+      event.school.toLowerCase().includes(selectedSchool.toLowerCase());
+
+    const matchesFromDate = !fromDate || event.eventDateKey >= fromDate;
+    const matchesToDate = !toDate || event.eventDateKey <= toDate;
+
+    return matchesSearch && matchesSchool && matchesFromDate && matchesToDate;
+  }), [allEvents, search, fromDate, selectedSchool, toDate]);
 
   useEffect(() => {
-    setVisibleEventsCount(INITIAL_VISIBLE_EVENTS);
+    setVisibleEventsCount(resultsPerFetch);
     setLoadMoreMessage("");
-  }, [search, activeCampus]);
+  }, [search, selectedSchool, fromDate, resultsPerFetch, toDate]);
 
   const visibleEvents = useMemo(
     () => filteredEvents.slice(0, visibleEventsCount),
@@ -304,9 +338,14 @@ export default function Events() {
 
   const hasMoreEvents = visibleEventsCount < filteredEvents.length;
 
+  const visibleCampuses = useMemo(() => {
+    const q = campusSearch.toLowerCase().trim();
+    return CAMPUS_OPTIONS.filter((campus) => campus.toLowerCase().includes(q));
+  }, [campusSearch]);
+
   const handleLoadMore = () => {
     if (hasMoreEvents) {
-      setVisibleEventsCount((current) => current + LOAD_MORE_STEP);
+      setVisibleEventsCount((current) => current + resultsPerFetch);
       setLoadMoreMessage("");
       return;
     }
@@ -337,6 +376,11 @@ export default function Events() {
             color: #111111;
             font-family: 'DM Sans', system-ui, sans-serif;
             overflow-x: hidden;
+            --nav-height: 70px;
+        }
+
+        main {
+          padding-top: var(--nav-height);
         }
 
         .container {
@@ -381,7 +425,7 @@ export default function Events() {
         left: 0;
         right: 0;
         z-index: 9999;
-        background: rgba(250, 250, 249, 0.94);
+        background: #ffffff;
         border-bottom: 1px solid #e5e7eb;
         }
 
@@ -405,12 +449,19 @@ export default function Events() {
         transform: translateX(-50%);
         }
 
-        .nav-links a,
-        .footer a {
+        .nav-links a {
           color: #6b7280;
           text-decoration: none;
           font-size: 14px;
           font-weight: 600;
+          transition: color 0.2s ease;
+        }
+
+        .footer a {
+          color: rgba(255,255,255,0.85);
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 500;
           transition: color 0.2s ease;
         }
 
@@ -497,6 +548,7 @@ export default function Events() {
             color: #111111;
             text-decoration: none;
             font-weight: 800;
+          font-size: 15px;
             border-bottom: 1px solid #f1f1f1;
         }
 
@@ -520,10 +572,9 @@ export default function Events() {
         }
 
         .filter-section {
-            position: sticky;
-            top: 70px;
+          position: relative;
             z-index: 60;
-            background: rgba(250, 250, 249, 0.92);
+            background: #ffffff;
             backdrop-filter: blur(12px);
             border-bottom: 1px solid #e5e7eb;
             padding: 16px 0;
@@ -533,6 +584,403 @@ export default function Events() {
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        .mobile-filter-toolbar,
+        .mobile-filter-panel {
+          display: none;
+        }
+
+        .filter-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(280px, 1fr) minmax(280px, 1fr) auto;
+          gap: 16px;
+          align-items: end;
+          margin-top: 18px;
+        }
+
+        .filter-field {
+          min-width: 0;
+        }
+
+        .filter-label {
+          display: block;
+          margin-bottom: 10px;
+          font-size: 16px;
+          font-weight: 800;
+          color: #262626;
+        }
+
+        .filter-control {
+          width: 100%;
+          height: 60px;
+          border: 1px solid #e1e5ee;
+          background: #ffffff;
+          border-radius: 8px;
+          padding: 0 18px;
+          outline: none;
+          font-size: 16px;
+          color: #111111;
+          box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+        }
+
+        .filter-control:focus {
+          border-color: rgba(255, 0, 72, 0.36);
+          box-shadow: 0 0 0 3px rgba(255, 0, 72, 0.08);
+        }
+
+        .filter-select {
+          appearance: none;
+          background-image:
+            linear-gradient(45deg, transparent 50%, #9ca3af 50%),
+            linear-gradient(135deg, #9ca3af 50%, transparent 50%);
+          background-position:
+            calc(100% - 24px) calc(50% - 4px),
+            calc(100% - 18px) calc(50% - 4px);
+          background-size: 6px 6px, 6px 6px;
+          background-repeat: no-repeat;
+          padding-right: 46px;
+        }
+
+        .filter-date {
+          padding-right: 16px;
+        }
+
+        .filter-reset {
+          height: 60px;
+          border: 0;
+          border-radius: 18px;
+          padding: 0 28px;
+          background: #11162e;
+          color: #ffffff;
+          font-size: 15px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .filter-reset:hover {
+          background: #0b1020;
+        }
+
+        .mobile-filter-toolbar {
+          align-items: center;
+          gap: 10px;
+          margin-top: 14px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .mobile-filter-toolbar::-webkit-scrollbar {
+          display: none;
+        }
+
+        .mobile-filter-chip {
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          height: 46px;
+          padding: 0 18px;
+          border-radius: 14px;
+          border: 1px solid #dfe5ee;
+          background: #eef3f9;
+          color: #111827;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+        }
+
+        .mobile-filter-chip-primary {
+          background: #edf2f7;
+        }
+
+        .mobile-filter-chevron {
+          color: #6b7280;
+        }
+
+        .mobile-filter-count {
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 64px;
+          height: 46px;
+          padding: 0 14px;
+          border-radius: 14px;
+          border: 1px solid #dfe5ee;
+          background: #ffffff;
+          color: #94a3b8;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        .mobile-filter-panel.open {
+          display: block;
+          margin-top: 12px;
+        }
+
+        .mobile-filter-overlay {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: calc(100% + 8px);
+          z-index: 120;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          padding: 0 12px;
+        }
+
+        .mobile-filter-sheet {
+          width: 100%;
+          max-height: min(72vh, 620px);
+          overflow-y: auto;
+          background: #ffffff;
+          border-radius: 18px;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+          padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+          animation: filterSheetDown 0.22s ease;
+        }
+
+        @keyframes filterSheetDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .mobile-filter-sheet-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+
+        .mobile-filter-sheet-head h2 {
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: 0;
+          color: #111827;
+        }
+
+        .mobile-filter-done {
+          border: 0;
+          background: transparent;
+          color: #334155;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .filter-accordion-card {
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          background: #f8fafc;
+          margin-bottom: 12px;
+          overflow: hidden;
+        }
+
+        .filter-accordion-title {
+          width: 100%;
+          border: 0;
+          padding: 14px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 15px;
+          font-weight: 800;
+          color: #0f172a;
+          border-bottom: 1px solid #edf0f4;
+          background: #f8fafc;
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .filter-accordion-chevron {
+          color: #64748b;
+          transition: transform 0.2s ease;
+        }
+
+        .filter-accordion-chevron.open {
+          transform: rotate(180deg);
+        }
+
+        .filter-accordion-body {
+          padding: 12px;
+          background: #ffffff;
+        }
+
+        .mobile-location-search {
+          position: relative;
+          margin-bottom: 10px;
+        }
+
+        .mobile-location-search svg {
+          position: absolute;
+          left: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94a3b8;
+        }
+
+        .mobile-location-search input {
+          width: 100%;
+          height: 50px;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          background: #f8fafc;
+          padding: 0 14px 0 42px;
+          outline: none;
+          font-size: 15px;
+        }
+
+        .mobile-location-list {
+          display: grid;
+          gap: 10px;
+          max-height: 280px;
+          overflow-y: auto;
+          padding-right: 2px;
+        }
+
+        .mobile-location-item {
+          width: 100%;
+          height: 52px;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          background: #ffffff;
+          color: #111827;
+          font-size: 15px;
+          font-weight: 700;
+          text-align: left;
+          padding: 0 18px;
+          cursor: pointer;
+        }
+
+        .mobile-location-item.active {
+          background: #ff0048;
+          border-color: #ff0048;
+          color: #ffffff;
+        }
+
+        .mobile-date-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .mobile-date-grid .filter-label {
+          margin-bottom: 6px;
+          font-size: 13px;
+        }
+
+        .mobile-date-grid .filter-control {
+          height: 42px;
+          border-radius: 12px;
+          font-size: 15px;
+          padding: 0 10px;
+        }
+
+        .mobile-clear-link {
+          border: 0;
+          background: transparent;
+          color: #334155;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .filter-sub-clear-dates {
+          margin-top: 12px;
+          display: inline-flex;
+        }
+
+        .results-per-fetch-options {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .results-per-fetch-option {
+          height: 42px;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          background: #ffffff;
+          color: #111827;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .results-per-fetch-option.active {
+          background: #111827;
+          border-color: #111827;
+          color: #ffffff;
+        }
+
+        .mobile-filter-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .mobile-date-inline-actions {
+          margin-top: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .mobile-apply-inline {
+          height: 40px;
+          min-width: 92px;
+          border: 0;
+          border-radius: 10px;
+          background: #ff0048;
+          color: #ffffff;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+          padding: 0 18px;
+        }
+
+        .mobile-reset-all,
+        .mobile-apply-all {
+          height: 54px;
+          border-radius: 14px;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .mobile-reset-all {
+          border: 0;
+          background: #0b1020;
+          color: #ffffff;
+        }
+
+        .mobile-apply-all {
+          border: 0;
+          background: #ff0048;
+          color: #ffffff;
+        }
+
+        .desktop-filter-grid {
+          margin-top: 18px;
+          position: sticky;
+          top: var(--nav-height);
+          z-index: 62;
+          background: #ffffff;
+          padding: 10px 0;
+          border-bottom: 1px solid #e5e7eb;
         }
 
         .search-box {
@@ -552,13 +1000,13 @@ export default function Events() {
         .search-box input {
             width: 100%;
             height: 52px;
-            border: 1px solid #e5e7eb;
-            background: #ffffff;
+          border: 1px solid #dbe3ee;
+          background: #eef3f9;
             border-radius: 999px;
             padding: 0 18px 0 48px;
             outline: none;
-            font-size: 14px;
-            font-weight: 600;
+          font-size: 15px;
+          font-weight: 500;
             color: #111111;
         }
 
@@ -566,57 +1014,8 @@ export default function Events() {
             border-color: rgba(255, 0, 72, 0.36);
         }
 
-        .event-count {
-            flex-shrink: 0;
-            color: #6b7280;
-            font-size: 13px;
-            font-weight: 800;
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 999px;
-            padding: 14px 18px;
-        }
-
-        .campus-strip {
-            border-bottom: 1px solid #e5e7eb;
-            background: #ffffff;
-            padding-top: 90px;
-            padding-bottom: 20px;
-        }
-
-        .campus-list {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            scrollbar-width: none;
-        }
-
-        .campus-list::-webkit-scrollbar {
-            display: none;
-        }
-
-        .campus-list button {
-            flex-shrink: 0;
-            border-radius: 999px;
-            border: 1px solid #e5e7eb;
-            padding: 8px 18px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-            background: #ffffff;
-            color: #6b7280;
-            transition: all 0.2s ease;
-        }
-
-        .campus-list button.active {
-            background: #ff0048;
-            color: #ffffff;
-            border-color: #ff0048;
-            box-shadow: 0 10px 26px rgba(255, 0, 72, 0.18);
-        }
-
         .events-main {
-            padding: 52px 0 84px;
+          padding: 28px 0 84px;
         }
 
         .events-head {
@@ -782,12 +1181,15 @@ export default function Events() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: rgba(255, 255, 255, 0.94);
-          color: #111111;
+          background: rgba(255, 241, 242, 0.98);
+          color: #ff0048;
           font-size: 13px;
           font-weight: 900;
           border-radius: 999px;
           padding: 10px 14px;
+          text-transform: lowercase;
+          border: 1px solid rgba(255, 0, 72, 0.14);
+          box-shadow: 0 10px 22px rgba(255, 0, 72, 0.08);
         }
 
         .event-meta {
@@ -816,15 +1218,6 @@ export default function Events() {
           font-size: 14px;
           line-height: 1.5;
           min-height: 30px;
-        }
-
-        .event-category {
-            color: #ff0048;
-            background: #fff1f2;
-            border-radius: 999px;
-            padding: 6px 12px;
-            font-size: 13px;
-            font-weight: 900;
         }
 
         .event-date {
@@ -966,88 +1359,9 @@ export default function Events() {
           }
         }
 
-        .cta-section {
-            padding: 56px 0 72px;
-            position: relative;
-        }
-
-        .cta-wrap {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 0 32px;
-        }
-
-        .cta-card-outer {
-            position: relative;
-            padding-top: 78px;
-        }
-
-        .cta-calendar {
-            position: absolute;
-            left: 50%;
-            top: 0;
-            z-index: 3;
-            transform: translateX(-50%);
-            filter: drop-shadow(0 18px 40px rgba(23, 23, 43, 0.18));
-        }
-
-        .cta-card {
-            background: #17172b;
-            color: #ffffff;
-            border-radius: 30px;
-            overflow: hidden;
-            padding: 104px 40px 80px;
-            text-align: center;
-            position: relative;
-        }
-
-        .cta-card h2 {
-            font-size: clamp(28px, 4vw, 40px);
-            font-weight: 900;
-            letter-spacing: -0.9px;
-            margin-bottom: 18px;
-        }
-
-        .cta-card p {
-            color: rgba(255, 255, 255, 0.72);
-            font-size: 17px;
-            line-height: 1.6;
-            max-width: 470px;
-            margin: 0 auto 32px;
-        }
-
-        .cta-confetti {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-
-        .confetti-piece {
-            position: absolute;
-            display: block;
-        }
-
-        .confetti-circle {
-            border-radius: 999px;
-        }
-
-        .confetti-square {
-            border-radius: 3px;
-        }
-
-        .confetti-triangle {
-            width: 0 !important;
-            height: 0 !important;
-            background: transparent !important;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-bottom: 10px solid var(--confetti-color);
-        }
-
         .footer {
-            border-top: 1px solid #e5e7eb;
-            background: #ffffff;
+          border-top: none;
+          background: #17172b;
         }
 
         .footer-inner {
@@ -1064,11 +1378,11 @@ export default function Events() {
         }
 
         .footer-about p {
-            font-size: 13px;
-            color: #9ca3af;
-            margin-top: 16px;
-            line-height: 1.6;
-            max-width: 260px;
+          font-size: 13px;
+          color: rgba(255,255,255,0.55);
+          margin-top: 16px;
+          line-height: 1.6;
+          max-width: 210px;
         }
 
         .socials {
@@ -1081,17 +1395,17 @@ export default function Events() {
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            border: 1px solid #e5e7eb;
+          border: 1px solid rgba(255,255,255,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #9ca3af;
-            transition: color 0.2s ease, border-color 0.2s ease;
+          color: rgba(255,255,255,0.8);
+          transition: border-color 0.2s ease, color 0.2s ease;
         }
 
         .socials a:hover {
-            color: #ff0048;
-            border-color: rgba(255, 0, 72, 0.25);
+          border-color: #FF0048;
+          color: #FF0048;
         }
 
         .footer-group h4 {
@@ -1100,6 +1414,7 @@ export default function Events() {
             text-transform: uppercase;
             letter-spacing: 0.18em;
             margin-bottom: 16px;
+          color: #FF0048;
         }
 
         .footer-group div {
@@ -1109,7 +1424,7 @@ export default function Events() {
         }
 
         .footer-bottom {
-            border-top: 1px solid #f3f4f6;
+          border-top: 1px solid rgba(255,255,255,0.1);
             padding-top: 24px;
             display: flex;
             align-items: center;
@@ -1119,14 +1434,14 @@ export default function Events() {
 
         .footer-bottom p,
         .footer-bottom a {
-            color: #9ca3af;
+          color: rgba(255,255,255,0.4);
             font-size: 13px;
             text-decoration: none;
         }
 
-        .footer-bottom a span {
-            color: #ff0048;
-            font-weight: 900;
+        .footer-bottom div {
+          display: flex;
+          gap: 20px;
         }
 
         @media (max-width: 900px) {
@@ -1149,6 +1464,10 @@ export default function Events() {
         }
 
         @media (max-width: 640px) {
+            .unitix-events-page {
+              --nav-height: 66px;
+            }
+
             .container,
             .nav-inner,
             .footer-inner {
@@ -1165,7 +1484,11 @@ export default function Events() {
             }
 
             .filter-section {
-            top: 66px;
+            position: fixed;
+            top: var(--nav-height);
+            left: 0;
+            right: 0;
+            z-index: 70;
             }
 
             .filter-row {
@@ -1173,8 +1496,56 @@ export default function Events() {
             align-items: stretch;
             }
 
-            .event-count {
-            text-align: center;
+            .search-box input {
+              height: 54px;
+              background: #eef3f9;
+              border-color: #dbe3ee;
+              font-size: 15px;
+              font-weight: 500;
+            }
+
+            .search-box svg {
+              left: 16px;
+            }
+
+            .desktop-filter-grid {
+              display: none;
+            }
+
+            .mobile-filter-toolbar {
+              display: flex;
+              position: static;
+              background: #ffffff;
+              padding: 10px 0;
+              border-bottom: 1px solid #e5e7eb;
+            }
+
+            .events-main {
+              padding-top: 170px;
+            }
+
+            .mobile-filter-panel.open {
+              display: none;
+            }
+
+            .filter-grid {
+              grid-template-columns: 1fr;
+              gap: 12px;
+            }
+
+            .filter-reset {
+              width: 100%;
+            }
+
+            .filter-label {
+              font-size: 14px;
+              margin-bottom: 8px;
+            }
+
+            .filter-control,
+            .filter-reset {
+              height: 52px;
+              border-radius: 14px;
             }
 
             .events-head {
@@ -1187,28 +1558,6 @@ export default function Events() {
 
             .event-img-wrap {
             height: 215px;
-            }
-
-            .cta-wrap {
-            padding: 0 20px;
-            }
-
-            .cta-card {
-            border-radius: 24px;
-            padding: 94px 22px 56px;
-            }
-
-            .cta-card-outer {
-            padding-top: 68px;
-            }
-
-            .cta-calendar svg {
-            width: 105px;
-            height: auto;
-            }
-
-            .cta-card .primary-btn {
-            width: 100%;
             }
 
             .footer-grid {
@@ -1280,19 +1629,371 @@ export default function Events() {
                 <Search size={18} />
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search event, campus, or location..." />
               </div>
-              <div className="event-count">{loading ? "Loading..." : `${filteredEvents.length} events`}</div>
             </div>
-          </div>
-        </section>
 
-        <section className="campus-strip">
-          <div className="container">
-            <div className="campus-list">
-              {campusChips.map((campus) => (
-                <button key={campus} type="button" className={activeCampus === campus ? "active" : ""} onClick={() => setActiveCampus(campus)}>
-                  {campus}
-                </button>
-              ))}
+            <div className="mobile-filter-toolbar">
+              <button
+                type="button"
+                className="mobile-filter-chip mobile-filter-chip-primary"
+                onClick={() => {
+                  setMobileFilterView("all");
+                  setOpenMobileSection("campus");
+                  setMobileFiltersOpen(true);
+                }}
+              >
+                <Filter size={16} />
+                Filters
+              </button>
+
+              <button
+                type="button"
+                className="mobile-filter-chip"
+                onClick={() => {
+                  setMobileFilterView("campus");
+                  setOpenMobileSection("campus");
+                  setMobileFiltersOpen(true);
+                }}
+              >
+                Campus
+                <ChevronDown size={14} className="mobile-filter-chevron" />
+              </button>
+
+              <button
+                type="button"
+                className="mobile-filter-chip"
+                onClick={() => {
+                  setMobileFilterView("dates");
+                  setOpenMobileSection("dates");
+                  setMobileFiltersOpen(true);
+                }}
+              >
+                Dates
+                <ChevronDown size={14} className="mobile-filter-chevron" />
+              </button>
+
+              <span className="mobile-filter-count">
+                {loading ? "0 /" : `${visibleEvents.length} / ${filteredEvents.length}`}
+              </span>
+            </div>
+
+            {mobileFiltersOpen && (
+              <div className="mobile-filter-overlay" role="dialog" aria-modal="true" aria-label="Filters">
+                <div className="mobile-filter-sheet">
+                  <div className="mobile-filter-sheet-head">
+                    <h2>
+                      {mobileFilterView === "campus"
+                        ? "Select campus"
+                        : mobileFilterView === "dates"
+                          ? "Select dates"
+                          : "Filters"}
+                    </h2>
+                    <button type="button" className="mobile-filter-done" onClick={() => setMobileFiltersOpen(false)}>
+                      Done
+                    </button>
+                  </div>
+
+                  {mobileFilterView === "all" && (
+                  <div className="filter-accordion-card">
+                    <button
+                      type="button"
+                      className="filter-accordion-title"
+                      onClick={() => setOpenMobileSection((current) => (current === "campus" ? null : "campus"))}
+                    >
+                      <span>Campus</span>
+                      <ChevronDown
+                        size={14}
+                        className={openMobileSection === "campus" ? "filter-accordion-chevron open" : "filter-accordion-chevron"}
+                      />
+                    </button>
+                    {openMobileSection === "campus" && (
+                    <div className="filter-accordion-body">
+                      <div className="mobile-location-search">
+                        <Search size={18} />
+                        <input
+                          value={campusSearch}
+                          onChange={(e) => setCampusSearch(e.target.value)}
+                          placeholder="Search campus..."
+                          aria-label="Search campus"
+                        />
+                      </div>
+
+                      <div className="mobile-location-list">
+                        <button
+                          type="button"
+                          className={selectedSchool === "All Schools" ? "mobile-location-item active" : "mobile-location-item"}
+                          onClick={() => setSelectedSchool("All Schools")}
+                        >
+                          All
+                        </button>
+                        {visibleCampuses.map((campus) => (
+                          <button
+                            key={campus}
+                            type="button"
+                            className={selectedSchool === campus ? "mobile-location-item active" : "mobile-location-item"}
+                            onClick={() => setSelectedSchool(campus)}
+                          >
+                            {campus}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                  )}
+
+                  {mobileFilterView === "campus" && (
+                  <div className="filter-accordion-card">
+                    <div className="filter-accordion-body">
+                      <div className="mobile-location-search">
+                        <Search size={18} />
+                        <input
+                          value={campusSearch}
+                          onChange={(e) => setCampusSearch(e.target.value)}
+                          placeholder="Search campus..."
+                          aria-label="Search campus"
+                        />
+                      </div>
+
+                      <div className="mobile-location-list">
+                        <button
+                          type="button"
+                          className={selectedSchool === "All Schools" ? "mobile-location-item active" : "mobile-location-item"}
+                          onClick={() => setSelectedSchool("All Schools")}
+                        >
+                          All
+                        </button>
+                        {visibleCampuses.map((campus) => (
+                          <button
+                            key={campus}
+                            type="button"
+                            className={selectedSchool === campus ? "mobile-location-item active" : "mobile-location-item"}
+                            onClick={() => setSelectedSchool(campus)}
+                          >
+                            {campus}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  )}
+
+                  {mobileFilterView === "all" && (
+                  <div className="filter-accordion-card">
+                    <button
+                      type="button"
+                      className="filter-accordion-title"
+                      onClick={() => setOpenMobileSection((current) => (current === "dates" ? null : "dates"))}
+                    >
+                      <span>Dates</span>
+                      <ChevronDown
+                        size={14}
+                        className={openMobileSection === "dates" ? "filter-accordion-chevron open" : "filter-accordion-chevron"}
+                      />
+                    </button>
+                    {openMobileSection === "dates" && (
+                    <div className="filter-accordion-body">
+                      <div className="mobile-date-grid">
+                        <div>
+                          <label className="filter-label" htmlFor="from-date-mobile">From</label>
+                          <input
+                            id="from-date-mobile"
+                            type="date"
+                            className="filter-control filter-date"
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            aria-label="From date"
+                          />
+                        </div>
+                        <div>
+                          <label className="filter-label" htmlFor="to-date-mobile">To</label>
+                          <input
+                            id="to-date-mobile"
+                            type="date"
+                            className="filter-control filter-date"
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            aria-label="To date"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="mobile-clear-link filter-sub-clear-dates"
+                        onClick={() => {
+                          setFromDate("");
+                          setToDate("");
+                        }}
+                      >
+                        Clear dates
+                      </button>
+                    </div>
+                    )}
+                  </div>
+                  )}
+
+                  {mobileFilterView === "dates" && (
+                  <div className="filter-accordion-card">
+                    <div className="filter-accordion-body">
+                      <div className="mobile-date-grid">
+                        <div>
+                          <label className="filter-label" htmlFor="from-date-mobile">From</label>
+                          <input
+                            id="from-date-mobile"
+                            type="date"
+                            className="filter-control filter-date"
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            aria-label="From date"
+                          />
+                        </div>
+                        <div>
+                          <label className="filter-label" htmlFor="to-date-mobile">To</label>
+                          <input
+                            id="to-date-mobile"
+                            type="date"
+                            className="filter-control filter-date"
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            aria-label="To date"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  )}
+
+                  {mobileFilterView === "all" && (
+                  <div className="filter-accordion-card">
+                    <button
+                      type="button"
+                      className="filter-accordion-title"
+                      onClick={() => setOpenMobileSection((current) => (current === "results" ? null : "results"))}
+                    >
+                      <span>Results per fetch</span>
+                      <ChevronDown
+                        size={14}
+                        className={openMobileSection === "results" ? "filter-accordion-chevron open" : "filter-accordion-chevron"}
+                      />
+                    </button>
+                    {openMobileSection === "results" && (
+                    <div className="filter-accordion-body">
+                      <div className="results-per-fetch-options" role="radiogroup" aria-label="Results per fetch">
+                        {[12, 24, 36].map((count) => (
+                          <button
+                            key={count}
+                            type="button"
+                            className={resultsPerFetch === count ? "results-per-fetch-option active" : "results-per-fetch-option"}
+                            onClick={() => setResultsPerFetch(count)}
+                            aria-pressed={resultsPerFetch === count}
+                          >
+                            {count}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                  )}
+
+                  {mobileFilterView === "all" && (
+                  <div className="mobile-filter-actions">
+                    <button
+                      type="button"
+                      className="mobile-reset-all"
+                      onClick={() => {
+                        setSearch("");
+                        setSelectedSchool("All Schools");
+                        setCampusSearch("");
+                        setFromDate("");
+                        setToDate("");
+                        setResultsPerFetch(12);
+                      }}
+                    >
+                      Reset all
+                    </button>
+                    <button type="button" className="mobile-apply-all" onClick={() => setMobileFiltersOpen(false)}>
+                      Apply
+                    </button>
+                  </div>
+                  )}
+
+                  {mobileFilterView === "dates" && (
+                  <div className="mobile-date-inline-actions">
+                    <button
+                      type="button"
+                      className="mobile-clear-link"
+                      onClick={() => {
+                        setFromDate("");
+                        setToDate("");
+                      }}
+                    >
+                      Clear dates
+                    </button>
+                    <button type="button" className="mobile-apply-inline" onClick={() => setMobileFiltersOpen(false)}>
+                      Apply
+                    </button>
+                  </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="filter-grid desktop-filter-grid">
+              <div className="filter-field">
+                <label className="filter-label" htmlFor="school-filter">Select Campus</label>
+                <select
+                  id="school-filter"
+                  className="filter-control filter-select"
+                  value={selectedSchool}
+                  onChange={(e) => setSelectedSchool(e.target.value)}
+                  aria-label="Select campus"
+                >
+                  <option value="All Schools">Select a campus</option>
+                  {CAMPUS_OPTIONS.map((school) => (
+                    <option key={school} value={school}>
+                      {school}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-field">
+                <label className="filter-label" htmlFor="from-date-desktop">From</label>
+                <input
+                  id="from-date-desktop"
+                  type="date"
+                  className="filter-control filter-date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  aria-label="From date"
+                />
+              </div>
+
+              <div className="filter-field">
+                <label className="filter-label" htmlFor="to-date-desktop">To</label>
+                <input
+                  id="to-date-desktop"
+                  type="date"
+                  className="filter-control filter-date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  aria-label="To date"
+                />
+              </div>
+
+              <button
+                type="button"
+                className="filter-reset"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedSchool("All Schools");
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Reset
+              </button>
             </div>
           </div>
         </section>
@@ -1351,52 +2052,6 @@ export default function Events() {
               </div>
             )}
 
-            <section className="cta-section">
-              <div className="cta-wrap">
-                <div className="cta-card-outer">
-                  <CalendarGraphic />
-
-                  <div className="cta-card">
-                    <div className="cta-confetti" aria-hidden="true">
-                      {[
-                        { left: "33%", top: "15%", size: 8, bg: "#ff9f43", rot: 45, type: "triangle" },
-                        { left: "38%", top: "13%", size: 13, bg: "#ff6b6b", rot: 0, type: "circle" },
-                        { left: "43%", top: "17%", size: 10, bg: "#ffd93d", rot: 30, type: "square" },
-                        { left: "49%", top: "20%", size: 7, bg: "#6bcb77", rot: 20, type: "square" },
-                        { left: "53%", top: "15%", size: 8, bg: "#4d96ff", rot: 22, type: "square" },
-                        { left: "58%", top: "18%", size: 11, bg: "#ff9f43", rot: 0, type: "circle" },
-                        { left: "63%", top: "14%", size: 7, bg: "#ff6b6b", rot: 0, type: "circle" },
-                        { left: "67%", top: "13%", size: 11, bg: "#6bcb77", rot: 90, type: "triangle" },
-                        { left: "72%", top: "14%", size: 11, bg: "#ffd93d", rot: 12, type: "circle" },
-                      ].map((piece, i) => (
-                        <span
-                          key={i}
-                          className={`confetti-piece confetti-${piece.type}`}
-                          style={{
-                            left: piece.left,
-                            top: piece.top,
-                            width: piece.size,
-                            height: piece.size,
-                            background: piece.bg,
-                            transform: `rotate(${piece.rot}deg)`,
-                            ["--confetti-color" as string]: piece.bg,
-                          }}
-                        />
-                      ))}
-                    </div>
-
-                    <h2>Ready to launch your next campus event?</h2>
-                    <p>
-                      Create your UniTix event page, start selling tickets, and give students a smoother event experience.
-                    </p>
-
-                    <Link to="/auth" className="primary-btn">
-                      Get started <ArrowRight size={16} />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </section>
           </div>
         </section>
       </main>

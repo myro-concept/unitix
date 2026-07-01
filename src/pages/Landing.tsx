@@ -273,8 +273,7 @@ function EventCard({ event, index }: { event: LandingEvent; index: number }) {
       <div className="event-img-wrap">
         {event.img ? <img src={event.img} alt={event.title} className="event-img" loading="lazy" decoding="async" /> : <div className="event-fallback"><Ticket size={42} /></div>}
         <span className="image-date-pill">
-          <CalendarDays size={14} />
-          {event.date}
+          {event.category.toLowerCase()}
         </span>
         <span className="price-pill">{event.tag}</span>
       </div>
@@ -286,7 +285,6 @@ function EventCard({ event, index }: { event: LandingEvent; index: number }) {
             {event.date}
             {event.time && <> • {event.time}</> }
           </span>
-          <span className="event-category">{event.category}</span>
           <span className="event-school">{event.school}</span>
         </div>
         <h3>{event.title}</h3>
@@ -754,7 +752,7 @@ export default function Landing() {
         left: 0;
         right: 0;
         z-index: 9999;
-        background: rgba(250, 250, 249, 0.94);
+          background: #ffffff;
         border-bottom: 1px solid #e5e7eb;
         }
 
@@ -1226,12 +1224,15 @@ export default function Landing() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: rgba(255, 255, 255, 0.94);
-          color: #111111;
+          background: rgba(255, 241, 242, 0.98);
+          color: #ff0048;
           font-size: 13px;
           font-weight: 900;
           border-radius: 999px;
           padding: 10px 14px;
+          text-transform: lowercase;
+          border: 1px solid rgba(255, 0, 72, 0.14);
+          box-shadow: 0 10px 22px rgba(255, 0, 72, 0.08);
         }
 
         .price-pill {
@@ -1290,15 +1291,6 @@ export default function Landing() {
           min-height: 30px;
         }
 
-        .event-category {
-          color: #ff0048;
-          background: #fff1f2;
-          border-radius: 999px;
-          padding: 6px 12px;
-          font-size: 13px;
-          font-weight: 900;
-        }
-
         .event-date {
           display: inline-flex;
           align-items: center;
@@ -1311,8 +1303,7 @@ export default function Landing() {
           word-break: break-word;
         }
 
-        .event-school,
-        .event-category {
+        .event-school {
           flex-shrink: 0;
         }
 
