@@ -262,7 +262,7 @@ const Checkout = () => {
         .checkout-mobile-menu a { display:block; padding:15px 0; color:#111111; text-decoration:none; font-weight:800; border-bottom:1px solid #f1f1f1; }
         .checkout-mobile-menu .checkout-primary-btn { display:flex !important; width:100%; height:56px; padding:0 !important; color:white !important; border-bottom:0 !important; margin-top:14px; }
         .checkout-mobile-login { display:flex !important; width:100%; height:56px; align-items:center; justify-content:center; background:#111111; color:#ffffff !important; border-radius:16px; border-bottom:0 !important; margin-top:14px; text-decoration:none; font-weight:800; }
-        .checkout-footer { border-top:1px solid #e5e7eb; background:white; }
+        .checkout-footer { border-top:none; background:#0b1020; }
         .checkout-footer-inner { max-width:1200px; margin:0 auto; padding:56px 32px 32px; }
         .checkout-footer-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:40px; margin-bottom:48px; }
         .checkout-footer-about p { font-size:13px; color:#9ca3af; margin-top:16px; line-height:1.6; max-width:210px; }

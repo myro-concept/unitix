@@ -1,3 +1,4 @@
+import SEO from "@/seo/SEO";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -316,6 +317,8 @@ export default function Events() {
   const closeMobile = () => setMobileOpen(false);
 
   return (
+    <>
+    <SEO page="events" />
     <div className="unitix-events-page">
       <style>{`
         * {
@@ -466,7 +469,7 @@ export default function Events() {
             height: 42px;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            background: #ffffff;
+          background: #ffffff;
             color: #111111;
             align-items: center;
             justify-content: center;
@@ -485,7 +488,7 @@ export default function Events() {
             background: #fafaf9;
             padding: 20px;
             overflow-y: auto;
-            border-top: 1px solid #e5e7eb;
+            border-top: none;
         }
 
         .mobile-menu a {
@@ -1491,5 +1494,6 @@ export default function Events() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

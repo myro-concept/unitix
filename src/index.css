@@ -111,3 +111,166 @@
     max-width: 70ch;
   }
 }
+
+.footer,
+.checkout-footer {
+  border-top: none !important;
+  background: #17172b !important;
+}
+
+.footer-inner,
+.checkout-footer-inner {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 56px 32px 32px !important;
+}
+
+.footer-grid,
+.checkout-footer-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr 1fr !important;
+  gap: 40px !important;
+  margin-bottom: 48px !important;
+}
+
+.footer-about p,
+.checkout-footer-about p {
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  margin-top: 16px !important;
+  line-height: 1.6 !important;
+  max-width: 210px !important;
+}
+
+.footer .font-extrabold,
+.checkout-footer .checkout-logo span {
+  color: #ffffff !important;
+}
+
+.socials,
+.checkout-socials {
+  display: flex !important;
+  gap: 12px !important;
+  margin-top: 20px !important;
+}
+
+.socials a,
+.checkout-socials a {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease, border-color 0.2s ease !important;
+}
+
+.socials a:hover,
+.checkout-socials a:hover {
+  color: #ff0048 !important;
+  border-color: rgba(255, 0, 72, 0.25) !important;
+}
+
+.footer-group h4,
+.checkout-footer-group h4 {
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.18em !important;
+  margin-bottom: 16px !important;
+  color: #ff0048 !important;
+}
+
+.footer-group div,
+.checkout-footer-group div {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.footer-group a,
+.checkout-footer-group a {
+  color: rgba(255, 255, 255, 0.82) !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: color 0.2s ease !important;
+}
+
+.footer-group a:hover,
+.checkout-footer-group a:hover {
+  color: #ff0048 !important;
+}
+
+.footer-bottom,
+.checkout-footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding-top: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+}
+
+.footer-bottom p,
+.footer-bottom a,
+.checkout-footer-bottom p,
+.checkout-footer-bottom a {
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 13px !important;
+  text-decoration: none !important;
+}
+
+.footer-bottom a[href*="myroconcept.com.ng"],
+.checkout-footer-bottom a[href*="myroconcept.com.ng"] {
+  color: #ff0048 !important;
+  font-weight: 800 !important;
+}
+
+.footer-bottom a[href*="myroconcept.com.ng"]:hover,
+.checkout-footer-bottom a[href*="myroconcept.com.ng"]:hover {
+  color: #ff4f7a !important;
+}
+
+.footer-bottom div,
+.checkout-footer-bottom div {
+  display: flex !important;
+  gap: 20px !important;
+}
+
+@media (max-width: 900px) {
+  .footer-grid,
+  .checkout-footer-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .footer-bottom,
+  .checkout-footer-bottom {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-grid,
+  .checkout-footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .footer-about,
+  .checkout-footer-about,
+  .footer-group:last-of-type,
+  .checkout-footer-group:last-of-type {
+    grid-column: 1 / -1 !important;
+  }
+
+  .footer-inner,
+  .checkout-footer-inner {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}

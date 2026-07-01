@@ -15,6 +15,7 @@ import {
   Twitter,
   Music2,
 } from "lucide-react";
+import SEO from "@/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -229,6 +230,7 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SEO page="contact" />
       <style>{`
         .unitix-logo-wrap {
           display: flex;
@@ -393,8 +395,8 @@ export default function Contact() {
         }
 
         .footer {
-          border-top: 1px solid #e5e7eb;
-          background: white;
+          border-top: none;
+          background: #0b1020;
         }
 
         .footer-inner {

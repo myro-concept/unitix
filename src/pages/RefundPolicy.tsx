@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Menu, X, CalendarClock, CheckCircle2, XCircle, Mail, Phone, ShieldCheck, Clock, AlertCircle, RefreshCw } from "lucide-react";
+import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function Logo() {
@@ -77,6 +78,7 @@ export default function RefundPolicy() {
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-foreground">
+      <SEO page="refund" />
       <style>{`
         .nav {
           position: sticky;
@@ -224,8 +226,8 @@ export default function RefundPolicy() {
         }
 
         .footer {
-          border-top: 1px solid #e5e7eb;
-          background: white;
+          border-top: none;
+          background: #0b1020;
         }
 
         .footer-inner {

@@ -15,6 +15,7 @@ import {
   HeartHandshake,
   MapPin,
 } from "lucide-react";
+import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function Logo() {
@@ -112,9 +113,11 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-foreground">
+      <SEO page="about" />
       <style>{`
   .nav {
-    position: relative;
+    position: sticky;
+    top: 0;
     z-index: 9999;
     background: rgba(250, 250, 249, 0.94);
     border-bottom: 1px solid #e5e7eb;
@@ -204,7 +207,7 @@ export default function About() {
   .outline-btn {
     background: #ffffff;
     color: #111111;
-    border: 2px solid #e5e7eb;
+    border: 1px solid rgba(17, 17, 17, 0.08);
     padding: 11px 28px;
   }
 
@@ -233,7 +236,7 @@ export default function About() {
     background: #fafaf9;
     padding: 20px;
     overflow-y: auto;
-    border-top: 1px solid #e5e7eb;
+    border-top: none;
   }
 
   .mobile-menu a {

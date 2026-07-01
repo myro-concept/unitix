@@ -10,6 +10,7 @@ import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function AuthLogo() {
@@ -83,6 +84,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden bg-[#fafaf9]">
+      <SEO page="auth" />
       {/* Subtle decorative shapes like the landing page confetti */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[10%] left-[8%] w-16 h-16 rounded-full bg-[#FF0048]/10 blur-sm" />

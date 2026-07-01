@@ -1,3 +1,4 @@
+import SEO from "@/seo/SEO";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -223,7 +224,7 @@ function ConfettiLayer() {
   );
 }
 
-function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+function Logo({ size = "md", textColor }: { size?: "sm" | "md" | "lg"; textColor?: string }) {
   const sz = size === "lg" ? 36 : size === "md" ? 30 : 22;
   const txt = size === "lg" ? 23 : size === "md" ? 18 : 14;
 
@@ -249,6 +250,7 @@ function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
         fontFamily: "'Bricolage Grotesque', sans-serif",
         fontWeight: 800,
         letterSpacing: "-0.02em",
+        ...(textColor ? { color: textColor } : {}),
       }}
     >
       UniTix
@@ -693,6 +695,8 @@ export default function Landing() {
   const closeMobile = () => setMobileOpen(false);
 
   return (
+  <>
+    <SEO page="home" />  
     <div className="unitix-page">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
@@ -774,8 +778,7 @@ export default function Landing() {
         transform: translateX(-50%);
         }
 
-        .nav-links a,
-        .footer a {
+        .nav-links a {
           color: #6b7280;
           text-decoration: none;
           font-size: 14px;
@@ -783,7 +786,19 @@ export default function Landing() {
           transition: color 0.2s ease;
         }
 
+        .footer a {
+          color: rgba(255,255,255,0.85);
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 500;
+          transition: color 0.2s ease;
+        }
+
         .nav-links a:hover,
+        .footer a:hover {
+          color: #FF0048;
+        }
+
         .footer a:hover {
           color: #FF0048;
         }
@@ -1985,8 +2000,8 @@ export default function Landing() {
         }
 
         .footer {
-          border-top: 1px solid #e5e7eb;
-          background: white;
+          border-top: none;
+          background: #17172b;
         }
 
         .footer-inner {
@@ -2004,7 +2019,7 @@ export default function Landing() {
 
         .footer-about p {
           font-size: 13px;
-          color: #9ca3af;
+          color: rgba(255,255,255,0.55);
           margin-top: 16px;
           line-height: 1.6;
           max-width: 210px;
@@ -2020,11 +2035,17 @@ export default function Landing() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(255,255,255,0.3);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #9ca3af;
+          color: rgba(255,255,255,0.8);
+          transition: border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .socials a:hover {
+          border-color: #FF0048;
+          color: #FF0048;
         }
 
         .footer-group h4 {
@@ -2033,6 +2054,7 @@ export default function Landing() {
           text-transform: uppercase;
           letter-spacing: 0.18em;
           margin-bottom: 16px;
+          color: #FF0048;
         }
 
         .footer-group div {
@@ -2042,7 +2064,7 @@ export default function Landing() {
         }
 
         .footer-bottom {
-          border-top: 1px solid #f3f4f6;
+          border-top: 1px solid rgba(255,255,255,0.1);
           padding-top: 24px;
           display: flex;
           align-items: center;
@@ -2052,7 +2074,7 @@ export default function Landing() {
 
         .footer-bottom p,
         .footer-bottom a {
-          color: #9ca3af;
+          color: rgba(255,255,255,0.4);
           font-size: 13px;
           text-decoration: none;
         }
@@ -2738,7 +2760,7 @@ export default function Landing() {
         <div className="footer-inner">
           <div className="footer-grid">
             <div className="footer-about">
-              <Logo size="md" />
+              <Logo size="md" textColor="#ffffff" />
               <p>The event ticketing platform built for Nigerian students.</p>
               <div className="socials">
                 {/* X / Twitter */}
@@ -2826,5 +2848,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

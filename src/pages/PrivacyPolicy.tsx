@@ -18,6 +18,7 @@ import {
   Eye,
   FileText,
 } from "lucide-react";
+import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 function Logo() {
@@ -97,6 +98,7 @@ export default function PrivacyPolicy() {
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-foreground">
+      <SEO page="privacy" />
       <style>{`
         .nav {
           position: sticky;
@@ -179,7 +181,7 @@ export default function PrivacyPolicy() {
         }
 
         .outline-btn {
-          background: #ffffff;
+          background: #0b1020;
           color: #111111;
           border: 2px solid #e5e7eb;
           padding: 11px 28px;
@@ -507,7 +509,7 @@ export default function PrivacyPolicy() {
         }
 
         .footer {
-          border-top: 1px solid #e5e7eb;
+          border-top: none;
           background: #ffffff;
         }
 

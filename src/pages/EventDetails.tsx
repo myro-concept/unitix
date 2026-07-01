@@ -457,7 +457,7 @@ export default function EventDetails() {
           height: 42px;
           border-radius: 12px;
           border: 1px solid #e5e7eb;
-          background: white;
+          background: #0b1020;
           color: #111111;
           align-items: center;
           justify-content: center;
@@ -949,7 +949,7 @@ export default function EventDetails() {
         }
 
         .footer {
-          border-top: 1px solid #e5e7eb;
+          border-top: none;
           background: white;
         }
 

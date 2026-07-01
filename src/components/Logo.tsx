@@ -3,6 +3,7 @@ import logoGlyph from "@/assets/logo-glyph-160.png";
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   className?: string;
+  textColor?: string;
 }
 
 const sizes = {
@@ -11,7 +12,7 @@ const sizes = {
   lg: { glyph: "w-12 h-12", text: "text-2xl" },
 };
 
-export function Logo({ size = "md", className = "" }: LogoProps) {
+export function Logo({ size = "md", className = "", textColor = "#111111" }: LogoProps) {
   const s = sizes[size];
 
   return (
@@ -24,7 +25,8 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
       />
 
       <span
-        className={`font-display font-bold tracking-tight text-[#111111] ${s.text}`}
+        className={`font-display font-bold tracking-tight ${s.text}`}
+        style={{ color: textColor }}
       >
         UniTix
       </span>
