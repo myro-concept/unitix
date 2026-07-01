@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useEventBySlug } from "@/hooks/useEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 type OrganizerProfile = {
@@ -46,6 +47,9 @@ type TicketType = {
   price: number;
   quantity: number | null;
 };
+
+const SITE_URL = "https://unitix.ng";
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.svg`;
 
 const footerLinks = {
   Platform: [
@@ -228,9 +232,21 @@ export default function EventDetails() {
     [event?.event_date]
   );
 
+  const canonicalUrl = `${SITE_URL}/events/${encodeURIComponent(slug ?? event?.slug ?? "")}`;
+  const eventDescription = event?.description?.trim() || "Discover this campus event and secure your ticket on UniTix.";
+  const ogImage = event?.background_image_url || DEFAULT_OG_IMAGE;
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#fafaf9]">
+        <SEO
+          page="events"
+          title="Loading event | UniTix"
+          description="Loading event details on UniTix."
+          url={canonicalUrl}
+          image={DEFAULT_OG_IMAGE}
+          robots="noindex, nofollow"
+        />
         <div className="flex flex-col items-center justify-center gap-3 text-center">
           <Loader2 className="w-9 h-9 animate-spin text-[#FF0048]" />
 
@@ -245,6 +261,14 @@ export default function EventDetails() {
   if (!event) {
     return (
       <div className="event-details-page loading-screen">
+        <SEO
+          page="events"
+          title="Event not found | UniTix"
+          description="This event may have ended, been removed, or the link is incorrect."
+          url={canonicalUrl}
+          image={DEFAULT_OG_IMAGE}
+          robots="noindex, nofollow"
+        />
         <Card className="not-found-card">
           <CardContent className="p-8 text-center">
             <h1>Event not found</h1>
@@ -274,6 +298,67 @@ export default function EventDetails() {
 )}`;
 
   const maxQuantity = selectedTicket?.quantity || 99;
+  const eventSchema = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.name,
+    description: eventDescription,
+    image: ogImage,
+    url: canonicalUrl,
+    startDate: event.event_date || undefined,
+    endDate: event.event_end_date || undefined,
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus: event.status === "cancelled"
+      ? "https://schema.org/EventCancelled"
+      : "https://schema.org/EventScheduled",
+    location: event.location_value
+      ? {
+          "@type": "Place",
+          name: event.location_value,
+          address: event.location_value,
+        }
+      : undefined,
+    organizer: organizerName
+      ? {
+          "@type": "Organization",
+          name: organizerName,
+          url: organizer?.website || undefined,
+        }
+      : undefined,
+    offers: {
+      "@type": "Offer",
+      url: canonicalUrl,
+      priceCurrency: "NGN",
+      price: Number(selectedTicket?.price || event.ticket_price || 0),
+      availability: "https://schema.org/InStock",
+      validFrom: event.event_date || undefined,
+    },
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${SITE_URL}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Events",
+        item: `${SITE_URL}/events`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: event.name,
+        item: canonicalUrl,
+      },
+    ],
+  };
 
   const copyToClipboard = async (text: string) => {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
@@ -323,6 +408,16 @@ export default function EventDetails() {
 
   return (
     <div className="event-details-page">
+      <SEO
+        page="events"
+        title={event.name}
+        description={eventDescription}
+        image={ogImage}
+        url={canonicalUrl}
+        type="website"
+        keywords={`${event.name}, ${category}, ${location}, campus events, UniTix`}
+        jsonLd={breadcrumbSchema && eventSchema ? [breadcrumbSchema, eventSchema] : eventSchema || breadcrumbSchema || undefined}
+      />
       <style>{`
         .event-details-page {
           min-height: 100vh;

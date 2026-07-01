@@ -1,0 +1,12 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="40" fill="#17172B"/>
+  <circle cx="1046" cy="126" r="86" fill="#FF0048" fill-opacity="0.18"/>
+  <circle cx="150" cy="520" r="130" fill="#FF0048" fill-opacity="0.14"/>
+  <rect x="98" y="94" width="120" height="120" rx="28" fill="#FF0048"/>
+  <path d="M135 132H181V145.5C181 150.194 177.194 154 172.5 154H144.5C139.806 154 136 150.194 136 145.5V132Z" fill="white"/>
+  <path d="M135 186H181V172.5C181 167.806 177.194 164 172.5 164H144.5C139.806 164 136 167.806 136 172.5V186Z" fill="white"/>
+  <path d="M135 132V186M181 132V186" stroke="white" stroke-width="11" stroke-linecap="round"/>
+  <text x="260" y="172" fill="white" font-family="'Bricolage Grotesque', Arial, sans-serif" font-size="82" font-weight="800">UniTix</text>
+  <text x="260" y="248" fill="#D1D5DB" font-family="'DM Sans', Arial, sans-serif" font-size="34" font-weight="500">Discover campus events, buy tickets, and manage entry.</text>
+  <text x="98" y="476" fill="#FF0048" font-family="'DM Sans', Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="4">CAMPUS EVENT TICKETING</text>
+</svg>

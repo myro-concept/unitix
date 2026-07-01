@@ -84,7 +84,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden bg-[#fafaf9]">
-      <SEO page="auth" />
+      <SEO page="auth" robots="noindex, nofollow" />
       {/* Subtle decorative shapes like the landing page confetti */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[10%] left-[8%] w-16 h-16 rounded-full bg-[#FF0048]/10 blur-sm" />
