@@ -22,6 +22,7 @@ import {
 import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
+import { ShareSheet } from "@/components/ShareSheet";
 
 type PublicEvent = {
   id?: string;
@@ -200,6 +201,7 @@ function CalendarGraphic() {
 }
 function EventCard({ event, index }: { event: EventCardItem; index: number }) {
   const href = `/${event.slug}`;
+
   return (
     <motion.a href={href} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.42, delay: index * 0.06 }} className="event-card">
       <div className="event-img-wrap">
@@ -228,10 +230,13 @@ function EventCard({ event, index }: { event: EventCardItem; index: number }) {
             Get Ticket
           </span>
 
-          <span>
-            <Share2 size={18} />
-            Share
-          </span>
+          <ShareSheet
+            title={event.title}
+            text={`Check out ${event.title} on UniTix`}
+            url={typeof window !== "undefined" ? new URL(href, window.location.origin).toString() : `https://unitix.ng${href}`}
+            label="Share"
+            className="share-action"
+          />
         </div>
       </div>
     </motion.a>
@@ -1273,7 +1278,8 @@ export default function Events() {
             font-weight: 800;
         }
 
-        .event-actions span {
+        .event-actions span,
+        .event-actions button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -1281,9 +1287,31 @@ export default function Events() {
           line-height: 1;
         }
 
+        .event-actions button {
+          border: 0;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          padding: 0;
+        }
+
         .event-actions span svg {
           display: block;
           flex-shrink: 0;
+        }
+
+        .event-actions button svg {
+          display: block;
+          flex-shrink: 0;
+        }
+
+        .share-action:hover {
+          color: #ff0048;
+        }
+
+        .share-action:hover svg {
+          color: #ff0048;
         }
 
         .get-ticket-action {

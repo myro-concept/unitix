@@ -29,6 +29,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
+import NotFound from "./NotFound";
+import { ShareSheet } from "@/components/ShareSheet";
 
 type OrganizerProfile = {
   id: string;
@@ -72,13 +74,13 @@ const footerLinks = {
   ],
 };
 
-function Logo() {
+function Logo({ textColor = "#111111" }: { textColor?: string }) {
   return (
     <div className="ut-logo">
       <div className="ut-logo-mark">
         <img src={logoGlyph} alt="UniTix" />
       </div>
-      <span>UniTix</span>
+      <span style={{ color: textColor }}>UniTix</span>
     </div>
   );
 }
@@ -259,28 +261,7 @@ export default function EventDetails() {
   }
 
   if (!event) {
-    return (
-      <div className="event-details-page loading-screen">
-        <SEO
-          page="events"
-          title="Event not found | UniTix"
-          description="This event may have ended, been removed, or the link is incorrect."
-          url={canonicalUrl}
-          image={DEFAULT_OG_IMAGE}
-          robots="noindex, nofollow"
-        />
-        <Card className="not-found-card">
-          <CardContent className="p-8 text-center">
-            <h1>Event not found</h1>
-            <p>This event may have ended, been removed, or the link is incorrect.</p>
-
-            <Button asChild className="unitix-btn">
-              <Link to="/events">Browse events</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <NotFound />;
   }
 
   const flyer = event.background_image_url;
@@ -1585,14 +1566,13 @@ export default function EventDetails() {
                     Copy link
                   </button>
 
-                  <a
-                    href={whatsappShareUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <WhatsAppIcon size={17} />
-                    Share on WhatsApp
-                  </a>
+                  <ShareSheet
+                    title={event.name}
+                    text={`Check out ${event.name} on UniTix`}
+                    url={eventUrl || canonicalUrl}
+                    label="Share"
+                    className="copy-link-btn cursor-pointer"
+                  />
                 </div>
               </motion.div>
 
@@ -1692,14 +1672,13 @@ export default function EventDetails() {
                     Copy event link
                   </button>
 
-                  <a
-                    href={whatsappShareUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <WhatsAppIcon size={17} />
-                    Share on WhatsApp
-                  </a>
+                  <ShareSheet
+                    title={event.name}
+                    text={`Check out ${event.name} on UniTix`}
+                    url={eventUrl || canonicalUrl}
+                    label="Share"
+                    className="copy-event-link-btn cursor-pointer"
+                  />
                 </div>
 
                 <div className="secure-note">
@@ -1717,7 +1696,7 @@ export default function EventDetails() {
         <div className="footer-inner">
           <div className="footer-grid">
             <div className="footer-about">
-              <Logo />
+              <Logo textColor="#ffffff" />
               <p>The event ticketing platform built for Nigerian students.</p>
               <div className="socials">
                 {/* X / Twitter */}

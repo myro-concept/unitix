@@ -60,6 +60,8 @@ const App = () => (
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/events" element={<BrowseEvents />} />
+              <Route path="/event" element={<NotFound />} />
+              <Route path="/event/*" element={<NotFound />} />
               <Route path="/checkout/:slug" element={<Checkout />} />
               <Route path="/:slug" element={<EventDetails />} />
 
