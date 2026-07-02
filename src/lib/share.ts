@@ -39,14 +39,18 @@ export async function shareLink({ title, text, url }: SharePayload) {
         copyWithFallback();
       }
 
-      toast.success("Event link copied");
+      toast.success("Event link copied", {
+        className: "copy-link-toast",
+      });
       return false;
     }
   } catch {
     try {
       if (typeof navigator !== "undefined") {
         copyWithFallback();
-        toast.success("Event link copied");
+        toast.success("Event link copied", {
+          className: "copy-link-toast",
+        });
         return false;
       }
     } catch {

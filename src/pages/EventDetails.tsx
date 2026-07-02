@@ -361,7 +361,9 @@ export default function EventDetails() {
   const handleCopyLink = async () => {
     try {
       await copyToClipboard(eventUrl);
-      toast.success("Event link copied");
+      toast.success("Event link copied", {
+        className: "copy-link-toast",
+      });
     } catch (error) {
       toast.error("Could not copy event link");
     }

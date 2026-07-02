@@ -140,7 +140,9 @@ function InstagramIcon() {
         document.execCommand("copy");
         document.body.removeChild(textArea);
       }
-      toast.success("Event link copied");
+      toast.success("Event link copied", {
+        className: "copy-link-toast",
+      });
     } catch {
       toast.error("Could not copy link");
     }

@@ -58,7 +58,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col w-full bg-[#fafaf9] text-[#111111]">
-      <header className="h-16 flex items-center px-4 sm:px-6 gap-4 border-b border-[#e5e7eb] bg-[#fafaf9]/95 backdrop-blur-md sticky top-0 z-50">
+      <header className="h-16 flex items-center px-4 sm:px-6 gap-4 border-b border-[#e5e7eb] bg-white/95 backdrop-blur-md sticky top-0 z-50">
         <Button
           type="button"
           variant="ghost"

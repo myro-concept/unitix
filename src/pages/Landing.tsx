@@ -1381,8 +1381,18 @@ export default function Landing() {
           flex-shrink: 0;
         }
 
+        .share-action {
+          color: #6b7280;
+          transition: color 0.22s ease, transform 0.22s ease;
+        }
+
+        .share-action svg {
+          transition: color 0.22s ease;
+        }
+
         .share-action:hover {
           color: #ff0048;
+          transform: translateY(-1px);
         }
 
         .share-action:hover svg {
