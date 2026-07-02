@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useEventBySlug } from "@/hooks/useEvents";
+import { useCreateRegistration } from "@/hooks/useRegistrations";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 interface ContactInfo {
@@ -69,6 +70,7 @@ const Checkout = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: event, isLoading } = useEventBySlug(slug);
+  const createRegistration = useCreateRegistration();
   const [paystackReady, setPaystackReady] = useState(false);
 
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
@@ -99,13 +101,17 @@ const Checkout = () => {
   };
 
   useEffect(() => {
-    if (!checkoutState.ticketId || !checkoutState.price) {
+    if (!checkoutState.ticketId) {
       toast.error("Please select a ticket first");
       navigate(`/${slug}`);
     }
   }, [checkoutState, slug, navigate]);
 
   useEffect(() => {
+    if ((checkoutState.price || 0) <= 0) {
+      return;
+    }
+
     const scriptId = "paystack-inline-js";
     const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
 
@@ -166,6 +172,19 @@ const Checkout = () => {
     toast.info("Coupon validation coming soon");
   };
 
+  const buildRegistrationPayload = (finalAttendee: AttendeeInfo) => ({
+    "Full Name": `${finalAttendee.firstName} ${finalAttendee.lastName}`.trim(),
+    "Email Address": finalAttendee.email.trim(),
+    "Phone Number": finalAttendee.phone.trim(),
+    "Ticket Type": checkoutState.ticketName,
+    Quantity: String(checkoutState.quantity),
+    "Ticket Price": String(checkoutState.price),
+    "Order Total": String(total),
+    "Contact Name": `${contactInfo.firstName} ${contactInfo.lastName}`.trim(),
+    "Contact Email": contactInfo.email.trim(),
+    "Contact Phone": contactInfo.phone.trim(),
+  });
+
   const handleCompleteOrder = async () => {
     if (isPaymentSuccessful) {
       navigate(`/${slug}`);
@@ -196,6 +215,25 @@ const Checkout = () => {
 
     setIsProcessing(true);
 
+    const registrationPayload = buildRegistrationPayload(finalAttendee);
+
+    if (total <= 0) {
+      try {
+        await createRegistration.mutateAsync({
+          event_id: event.id,
+          data: registrationPayload,
+        });
+        setIsPaymentSuccessful(true);
+        toast.success("Registration successful! Your spot has been reserved.");
+        navigate(`/${slug}`);
+      } catch (error: any) {
+        toast.error(error?.message || "Registration failed. Please try again.");
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     try {
       if (!paystackPublicKey) {
         toast.error("Payment is not configured yet. Add VITE_PAYSTACK_PUBLIC_KEY before launch.");
@@ -214,13 +252,20 @@ const Checkout = () => {
         email: finalAttendee.email,
         amount: total * 100,
         ref: `${event.id}-${Date.now()}`,
-        callback: () => {
-          setIsProcessing(false);
-          setIsPaymentSuccessful(true);
-          toast.success("Payment successful! Your ticket has been sent to your email.");
-          setTimeout(() => {
+        callback: async () => {
+          try {
+            await createRegistration.mutateAsync({
+              event_id: event.id,
+              data: registrationPayload,
+            });
+            setIsPaymentSuccessful(true);
+            toast.success("Payment successful! Your registration has been confirmed.");
             navigate(`/${slug}`);
-          }, 2000);
+          } catch (error: any) {
+            toast.error(error?.message || "Payment succeeded, but registration could not be completed.");
+          } finally {
+            setIsProcessing(false);
+          }
         },
         onClose: () => {
           setIsProcessing(false);
@@ -571,13 +616,12 @@ const Checkout = () => {
                         {checkoutState.ticketName}
                       </p>
                       <p className="text-[11px] text-[#6b7280] mt-0.5">
-                        {checkoutState.quantity} × ₦
-                        {checkoutState.price.toLocaleString()}
+                          {checkoutState.quantity} × {checkoutState.price > 0 ? `₦${checkoutState.price.toLocaleString()}` : "Free"}
                       </p>
                     </div>
 
                     <p className="text-sm font-semibold text-[#111827] whitespace-nowrap">
-                      ₦{subtotal.toLocaleString()}
+                        {subtotal > 0 ? `₦${subtotal.toLocaleString()}` : "Free"}
                     </p>
                   </div>
                 </div>
@@ -612,7 +656,7 @@ const Checkout = () => {
               <div className="border-t border-[#efefef] mt-4 pt-4 space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[#6b7280]">Subtotal</span>
-                  <span className="text-[#111827]">₦{subtotal.toLocaleString()}</span>
+                  <span className="text-[#111827]">{subtotal > 0 ? `₦${subtotal.toLocaleString()}` : "Free"}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
@@ -622,20 +666,20 @@ const Checkout = () => {
 
                 <div className="flex items-center justify-between pt-2 text-base font-bold">
                   <span className="text-[#111827]">Total</span>
-                  <span className="text-[#111827]">₦{total.toLocaleString()}</span>
+                  <span className="text-[#111827]">{total > 0 ? `₦${total.toLocaleString()}` : "Free"}</span>
                 </div>
               </div>
 
               {/* Secure note */}
               <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-[#9ca3af]">
                 <Lock size={12} />
-                <span>Secure checkout powered by Paystack</span>
+                <span>{total > 0 ? "Secure checkout powered by Paystack" : "Free registration will be saved instantly"}</span>
               </div>
             </div>
 
             <Button
               onClick={handleCompleteOrder}
-              disabled={isProcessing || !paystackReady}
+              disabled={isProcessing || (total > 0 && !paystackReady) || createRegistration.isPending}
               className="w-full mt-4 h-14 rounded-xl bg-[#FF0048] hover:bg-[#e60040] text-white font-bold shadow-none text-base"
             >
               {isProcessing ? (
@@ -643,10 +687,10 @@ const Checkout = () => {
               ) : isPaymentSuccessful ? (
                 <span className="flex items-center gap-2.5 text-[1rem] font-bold">
                   <CheckCircle2 size={18} />
-                  Payment Successful
+                  {total > 0 ? "Payment Successful" : "Registration Complete"}
                 </span>
               ) : (
-                <span className="flex items-center gap-2.5 text-[1rem] font-bold">Complete Order <span style={{ opacity: 0.5, fontSize: '1.1rem' }}>•</span> <span className="text-[1rem] font-extrabold">₦{total.toLocaleString()}</span></span>
+                <span className="flex items-center gap-2.5 text-[1rem] font-bold">{total > 0 ? "Complete Order" : "Complete Registration"} <span style={{ opacity: 0.5, fontSize: '1.1rem' }}>•</span> <span className="text-[1rem] font-extrabold">{total > 0 ? `₦${total.toLocaleString()}` : "Free"}</span></span>
               )}
             </Button>
           </aside>

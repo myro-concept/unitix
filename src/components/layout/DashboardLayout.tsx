@@ -6,9 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  Bell,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -28,7 +27,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [dismissedReminder, setDismissedReminder] = useState(false);
+  const [isSettingsReminderOpen, setIsSettingsReminderOpen] = useState(false);
+  const [promptedForUserId, setPromptedForUserId] = useState<string | null>(null);
 
   const fullName = profile?.full_name?.trim() || user?.email?.split("@")[0] || "User";
   const school = profile?.school?.trim() || "School not set";
@@ -41,13 +41,31 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const metadata = (user?.user_metadata || {}) as Record<string, string | undefined>;
   const hasBankDetails = Boolean(metadata.bank_name?.trim() && metadata.account_number?.trim() && metadata.account_name?.trim());
-  const hasPersonalDetails = Boolean((profile?.full_name || "").trim() && (profile?.school || "").trim());
-  const shouldShowSettingsReminder = !dismissedReminder && Boolean(user) && (!hasPersonalDetails || !hasBankDetails);
+  const hasPersonalDetails = Boolean(
+    metadata.first_name?.trim() &&
+    metadata.last_name?.trim() &&
+    metadata.phone?.trim() &&
+    profile?.school?.trim(),
+  );
+  const shouldShowSettingsReminder = Boolean(user) && (!hasPersonalDetails || !hasBankDetails);
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setIsSettingsReminderOpen(false);
+      setPromptedForUserId(null);
+      return;
+    }
+
+    if (shouldShowSettingsReminder && promptedForUserId !== user.id) {
+      setIsSettingsReminderOpen(true);
+      setPromptedForUserId(user.id);
+    }
+  }, [user?.id, shouldShowSettingsReminder, promptedForUserId]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -162,33 +180,45 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <main ref={mainRef} className="flex-1 p-4 sm:p-6 overflow-auto">
-        {shouldShowSettingsReminder && (
-          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 sm:px-5 sm:py-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                <Bell className="w-4 h-4" />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-amber-900">Complete your settings</p>
-                <p className="text-sm text-amber-800/90 mt-0.5">
-                  Finish setting up your profile and payout details so your account is ready.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button asChild size="sm" className="rounded-full bg-black text-white hover:bg-black/90">
-                    <Link to="/dashboard/settings">Complete Settings</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="rounded-full text-amber-900 hover:bg-amber-100" onClick={() => setDismissedReminder(true)}>
-                    Remind me later
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {children}
       </main>
+
+      <Sheet open={isSettingsReminderOpen} onOpenChange={setIsSettingsReminderOpen}>
+        <SheetContent
+          side="right"
+          className="flex h-full w-[calc(100vw-12px)] max-w-[420px] flex-col gap-5 border-l border-[#fde68a] bg-white px-5 py-6 sm:px-6 sm:py-8"
+        >
+          <SheetHeader className="space-y-3 pr-8 text-left">
+            <SheetTitle className="text-xl leading-tight text-[#111111]">Complete your settings</SheetTitle>
+            <SheetDescription className="text-sm leading-6 text-[#6b7280]">
+              Finish your profile and bank details to make your dashboard fully ready.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+            You can still browse, but payouts and account setup work best after this is completed.
+          </div>
+
+          <SheetFooter className="mt-auto flex-col gap-3 pt-2 sm:flex-row">
+            <Button
+              className="h-12 w-full rounded-xl bg-black text-white hover:bg-black/90 sm:w-auto"
+              onClick={() => {
+                setIsSettingsReminderOpen(false);
+                navigate("/dashboard/settings");
+              }}
+            >
+              Complete Settings
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 w-full rounded-xl border-[#f9a8d4] bg-white sm:w-auto"
+              onClick={() => setIsSettingsReminderOpen(false)}
+            >
+              Cancel
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

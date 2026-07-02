@@ -50,6 +50,24 @@ export function useEventBySlug(slug: string | undefined) {
   });
 }
 
+export function useOwnedEventBySlug(slug: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["owned-event-slug", user?.id, slug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("slug", slug!)
+        .eq("user_id", user!.id)
+        .single();
+      if (error) throw error;
+      return data as Event;
+    },
+    enabled: !!user && !!slug,
+  });
+}
+
 function generateSlug(name: string): string {
   return name
     .toLowerCase()

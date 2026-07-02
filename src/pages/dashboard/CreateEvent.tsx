@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useCreateEvent, useUpdateEvent, useEvent } from "@/hooks/useEvents";
+import { useCreateEvent, useUpdateEvent, useOwnedEventBySlug } from "@/hooks/useEvents";
 import { useBulkInsertFormFields, useFormFields } from "@/hooks/useFormFields";
 
 type TicketType = {
@@ -54,16 +54,16 @@ const eventTypes = [
 ];
 
 export default function CreateEvent() {
-  const { id: editId } = useParams<{ id?: string }>();
-  const isEditMode = !!editId;
+  const { slug: editSlug } = useParams<{ slug?: string }>();
+  const isEditMode = !!editSlug;
 
   const navigate = useNavigate();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   const bulkInsertFields = useBulkInsertFormFields();
 
-  const { data: existingEvent, isLoading: eventLoading } = useEvent(isEditMode ? editId : undefined);
-  const { data: existingFields, isLoading: fieldsLoading } = useFormFields(isEditMode ? editId : undefined);
+  const { data: existingEvent, isLoading: eventLoading } = useOwnedEventBySlug(isEditMode ? editSlug : undefined);
+  const { data: existingFields, isLoading: fieldsLoading } = useFormFields(existingEvent?.id);
 
   const [name, setName] = useState("");
   const [eventType, setEventType] = useState("party");
@@ -82,7 +82,6 @@ export default function CreateEvent() {
   const [fields, setFields] = useState(defaultFields);
   const [uploading, setUploading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
   const [createdSlug, setCreatedSlug] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -258,16 +257,16 @@ export default function CreateEvent() {
         status: "live",
       } as any;
 
-      if (isEditMode && editId) {
-        await updateEvent.mutateAsync({ id: editId, ...eventData } as any);
+      if (isEditMode && existingEvent?.id) {
+        await updateEvent.mutateAsync({ id: existingEvent.id, ...eventData } as any);
 
-        await supabase.from("form_fields").delete().eq("event_id", editId);
-        await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: editId })));
+        await supabase.from("form_fields").delete().eq("event_id", existingEvent.id);
+        await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: existingEvent.id })));
 
-        await saveTicketTypes(editId);
+        await saveTicketTypes(existingEvent.id);
 
         toast.success("Event updated");
-        navigate(`/dashboard/events/${editId}`);
+        navigate(`/dashboard/events/${existingEvent.slug}`);
         return;
       }
 
@@ -276,7 +275,6 @@ export default function CreateEvent() {
 
       await saveTicketTypes(event.id);
 
-      setCreatedEventId(event.id);
       setCreatedSlug(event.slug);
       setShowSuccess(true);
     } catch (err: any) {
@@ -371,7 +369,7 @@ export default function CreateEvent() {
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Button
             className="bg-[#FF0048] text-white hover:bg-[#E00040]"
-            onClick={() => navigate(`/dashboard/events/${createdEventId}`)}
+            onClick={() => navigate(`/dashboard/events/${createdSlug}`)}
           >
             <Eye className="mr-2 h-4 w-4" /> View Dashboard
           </Button>
@@ -430,7 +428,7 @@ export default function CreateEvent() {
         <Button
           variant="ghost"
           className="text-[#111111] hover:bg-white hover:text-[#FF0048]"
-          onClick={() => navigate(isEditMode ? `/dashboard/events/${editId}` : "/dashboard/events")}
+          onClick={() => navigate(isEditMode && existingEvent ? `/dashboard/events/${existingEvent.slug}` : "/dashboard/events")}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           {isEditMode ? "Back to Event" : "Back to Events"}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,7 +49,8 @@ function splitFullName(fullName?: string | null) {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
 
@@ -71,6 +73,7 @@ export default function SettingsPage() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingBank, setIsEditingBank] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const [personalSaved, setPersonalSaved] = useState(true);
   const [bankSaved, setBankSaved] = useState(true);
@@ -231,8 +234,27 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    toast.error("Self-serve account deletion is not connected yet. Please contact support.");
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    const confirmed = window.confirm(
+      "Delete your account permanently? This removes your profile, events, registrations, and cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setIsDeletingAccount(true);
+    try {
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) throw error;
+
+      toast.success("Account deleted successfully.");
+      await signOut();
+      navigate("/auth", { replace: true });
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete account.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
   };
 
   if (isLoading) {
@@ -405,8 +427,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Button variant="destructive" onClick={handleDeleteAccount} className="rounded-xl">
-          Delete Account
+        <Button variant="destructive" onClick={handleDeleteAccount} className="rounded-xl" disabled={isDeletingAccount}>
+          {isDeletingAccount ? "Deleting account..." : "Delete Account"}
         </Button>
       </div>
     </div>

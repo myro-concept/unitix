@@ -43,7 +43,7 @@ const Events = () => {
     return (
       <div
         className="group cursor-pointer"
-        onClick={() => navigate(`/dashboard/events/${event.id}`)}
+        onClick={() => navigate(`/dashboard/events/${event.slug}`)}
       >
         {/* Image */}
         <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-muted mb-3">
@@ -176,7 +176,7 @@ const Events = () => {
                 <div
                   key={event.id}
                   className="group flex flex-col sm:flex-row gap-4 cursor-pointer"
-                  onClick={() => navigate(`/dashboard/events/${event.id}`)}
+                  onClick={() => navigate(`/dashboard/events/${event.slug}`)}
                 >
                   <div className="sm:w-56 flex-shrink-0 aspect-video sm:aspect-[16/10] rounded-xl overflow-hidden bg-muted">
                     {event.background_image_url ? (
@@ -209,7 +209,7 @@ const Events = () => {
                         <Link to={`/${event.slug}`}><ExternalLink className="w-3 h-3 mr-1" />View page</Link>
                       </Button>
                       <Button variant="outline" size="sm" className="text-xs rounded-full" asChild onClick={(e) => e.stopPropagation()}>
-                        <Link to={`/dashboard/events/${event.id}`}>Manage</Link>
+                        <Link to={`/dashboard/events/${event.slug}`}>Manage</Link>
                       </Button>
                     </div>
                   </div>
