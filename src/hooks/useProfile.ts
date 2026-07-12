@@ -24,6 +24,7 @@ export function useProfile() {
         .insert({
           id: user!.id,
           full_name: user?.email?.split("@")[0] || "",
+          school: "",
           social_links: [],
         })
         .select()
