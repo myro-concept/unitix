@@ -91,7 +91,8 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
-  const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+  const paystackPublicKey = "pk_test_0838dcdb033d9740f48ae762f3e6c260becc25cf";
+  const isTestMode = paystackPublicKey?.trim().startsWith("pk_test");
 
   const checkoutState = (location.state as CheckoutState) || {
     ticketId: "",
@@ -114,25 +115,54 @@ const Checkout = () => {
 
     const scriptId = "paystack-inline-js";
     const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
+    let active = true;
+
+    const updateReadyState = () => {
+      if (!active) {
+        return;
+      }
+      const hasSetup = typeof (window as any).PaystackPop?.setup === "function";
+      setPaystackReady(hasSetup);
+    };
+
+    const handleLoad = () => {
+      updateReadyState();
+    };
+
+    const handleError = () => {
+      if (!active) {
+        return;
+      }
+      setPaystackReady(false);
+      toast.error("Could not load payment gateway.");
+    };
 
     if (existingScript) {
-      setPaystackReady(true);
-      return;
+      existingScript.addEventListener("load", handleLoad);
+      existingScript.addEventListener("error", handleError);
+      updateReadyState();
+
+      return () => {
+        active = false;
+        existingScript.removeEventListener("load", handleLoad);
+        existingScript.removeEventListener("error", handleError);
+      };
     }
 
     const script = document.createElement("script");
     script.id = scriptId;
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
-    script.onload = () => setPaystackReady(true);
-    script.onerror = () => toast.error("Could not load payment gateway.");
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
     document.body.appendChild(script);
 
     return () => {
-      script.onload = null;
-      script.onerror = null;
+      active = false;
+      script.removeEventListener("load", handleLoad);
+      script.removeEventListener("error", handleError);
     };
-  }, []);
+  }, [checkoutState.price]);
 
   if (isLoading) {
     return (
@@ -154,6 +184,31 @@ const Checkout = () => {
   const serviceFee = 0;
   const total = subtotal + serviceFee;
 
+  const getErrorMessage = (error: unknown) => {
+    if (error && typeof error === "object") {
+      const maybeError = error as {
+        message?: string;
+        details?: string;
+        hint?: string;
+      };
+      const parts = [maybeError.message, maybeError.details, maybeError.hint]
+        .filter((part) => typeof part === "string" && part.trim().length > 0)
+        .map((part) => part!.trim());
+
+      if (parts.length > 0) {
+        return parts.join(" | ");
+      }
+    }
+
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    if (typeof error === "string" && error.trim()) {
+      return error;
+    }
+    return "Unknown error";
+  };
+
   const handleContactChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setContactInfo((prev) => ({ ...prev, [name]: value }));
@@ -172,7 +227,10 @@ const Checkout = () => {
     toast.info("Coupon validation coming soon");
   };
 
-  const buildRegistrationPayload = (finalAttendee: AttendeeInfo) => ({
+  const buildRegistrationPayload = (
+    finalAttendee: AttendeeInfo,
+    paymentMeta?: { reference?: string; status?: string; mode?: string },
+  ) => ({
     "Full Name": `${finalAttendee.firstName} ${finalAttendee.lastName}`.trim(),
     "Email Address": finalAttendee.email.trim(),
     "Phone Number": finalAttendee.phone.trim(),
@@ -183,6 +241,9 @@ const Checkout = () => {
     "Contact Name": `${contactInfo.firstName} ${contactInfo.lastName}`.trim(),
     "Contact Email": contactInfo.email.trim(),
     "Contact Phone": contactInfo.phone.trim(),
+    ...(paymentMeta?.reference ? { "Payment Reference": paymentMeta.reference } : {}),
+    ...(paymentMeta?.status ? { "Payment Status": paymentMeta.status } : {}),
+    ...(paymentMeta?.mode ? { "Payment Mode": paymentMeta.mode } : {}),
   });
 
   const handleCompleteOrder = async () => {
@@ -235,48 +296,78 @@ const Checkout = () => {
     }
 
     try {
-      if (!paystackPublicKey) {
+      const normalizedKey = paystackPublicKey?.trim();
+
+      if (!normalizedKey) {
         toast.error("Payment is not configured yet. Add VITE_PAYSTACK_PUBLIC_KEY before launch.");
         setIsProcessing(false);
         return;
       }
 
-      if (!(window as any).PaystackPop || !paystackReady) {
+      const paystackPop = (window as any).PaystackPop;
+
+      if (!paystackPop || !paystackReady) {
         toast.error("Payment gateway is not ready yet. Please try again.");
         setIsProcessing(false);
         return;
       }
+      console.log("Paystack key in use:", normalizedKey);
+      if (typeof paystackPop.setup !== "function") {
+        toast.error("Paystack SDK loaded incorrectly. Please refresh and try again.");
+        setIsProcessing(false);
+        return;
+      }
 
-      const handler = (window as any).PaystackPop.setup({
-        key: paystackPublicKey,
-        email: finalAttendee.email,
-        amount: total * 100,
-        ref: `${event.id}-${Date.now()}`,
-        callback: async () => {
-          try {
-            await createRegistration.mutateAsync({
-              event_id: event.id,
-              data: registrationPayload,
-            });
-            setIsPaymentSuccessful(true);
-            toast.success("Payment successful! Your registration has been confirmed.");
-            navigate(`/${slug}`);
-          } catch (error: any) {
-            toast.error(error?.message || "Payment succeeded, but registration could not be completed.");
-          } finally {
-            setIsProcessing(false);
-          }
-        },
-        onClose: () => {
+      const attendeeEmail = finalAttendee.email.trim();
+
+      if (!attendeeEmail || !attendeeEmail.includes("@")) {
+        toast.error("Please enter a valid attendee email address.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const handleSuccessfulPayment = async (reference?: string) => {
+        const paymentMode = normalizedKey.startsWith("pk_test") ? "test" : "live";
+        const paidRegistrationPayload = buildRegistrationPayload(finalAttendee, {
+          reference,
+          status: "success",
+          mode: paymentMode,
+        });
+
+        try {
+          await createRegistration.mutateAsync({
+            event_id: event.id,
+            data: paidRegistrationPayload,
+          });
+          setIsPaymentSuccessful(true);
+          toast.success("Payment successful! Your registration has been confirmed.");
+          navigate(`/${slug}`);
+        } catch (error: any) {
+          const registrationError = getErrorMessage(error);
+          toast.error(`Payment succeeded, but attendee creation failed: ${registrationError}`);
+        } finally {
           setIsProcessing(false);
-          toast.info("Payment window closed");
+        }
+      };
+
+      const handler = paystackPop.setup({
+        key: normalizedKey,
+        email: isTestMode ? "test@example.com" : attendeeEmail,
+        amount: total * 100,
+        callback: function (response: { reference?: string }) {
+          void handleSuccessfulPayment(response?.reference);
+        },
+        onClose: function () {
+          setIsProcessing(false);
+          toast.info("Payment window closed.");
         },
       });
 
       handler.openIframe();
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       console.error("Payment error:", error);
-      toast.error("Payment initialization failed. Please try again.");
+      toast.error(`Payment initialization failed: ${errorMessage}`);
       setIsProcessing(false);
     }
   };
@@ -591,6 +682,12 @@ const Checkout = () => {
               <h2 className="text-[1.05rem] font-semibold text-[#111827] mb-4">
                 Order Summary
               </h2>
+
+              {isTestMode && (
+                <div className="mb-4 inline-flex items-center rounded-full border border-[#86efac] bg-[#f0fdf4] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#166534]">
+                  Test Mode
+                </div>
+              )}
 
               {/* Event/ticket row */}
               <div className="flex items-start gap-3 pb-4">

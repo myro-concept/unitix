@@ -8,6 +8,7 @@ type SharePayload = {
 
 export async function shareLink({ title, text, url }: SharePayload) {
   const shareText = text ?? `Check out ${title} on UniTix`;
+  const nav = typeof window !== "undefined" ? window.navigator : undefined;
 
   const copyWithFallback = () => {
     const textarea = document.createElement("textarea");
@@ -23,8 +24,8 @@ export async function shareLink({ title, text, url }: SharePayload) {
   };
 
   try {
-    if (typeof navigator !== "undefined" && "share" in navigator) {
-      await navigator.share({
+    if (nav && typeof nav.share === "function") {
+      await nav.share({
         title,
         text: shareText,
         url,
@@ -32,9 +33,9 @@ export async function shareLink({ title, text, url }: SharePayload) {
       return true;
     }
 
-    if (typeof navigator !== "undefined") {
-      if (navigator.clipboard?.writeText && window.isSecureContext) {
-        await navigator.clipboard.writeText(url);
+    if (nav) {
+      if (nav.clipboard?.writeText && window.isSecureContext) {
+        await nav.clipboard.writeText(url);
       } else {
         copyWithFallback();
       }
@@ -46,7 +47,7 @@ export async function shareLink({ title, text, url }: SharePayload) {
     }
   } catch {
     try {
-      if (typeof navigator !== "undefined") {
+      if (nav) {
         copyWithFallback();
         toast.success("Event link copied", {
           className: "copy-link-toast",

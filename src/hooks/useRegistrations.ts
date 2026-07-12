@@ -40,15 +40,34 @@ export function useCreateRegistration() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ event_id, data }: { event_id: string; data: Record<string, string> }) => {
-      const { data: result, error } = await supabase
-        .rpc("register_for_event", {
-          p_event_id: event_id,
-          p_data: data as unknown as Json,
-        });
-      if (error) {
-        throw error;
+      const rpcResponse = await supabase.rpc("register_for_event", {
+        p_event_id: event_id,
+        p_data: data as unknown as Json,
+      });
+
+      if (!rpcResponse.error) {
+        return rpcResponse.data;
       }
-      return result;
+
+      const rpcErrorMessage = rpcResponse.error.message.toLowerCase();
+      const isMissingFunction = rpcErrorMessage.includes("could not find the function");
+      const isAmbiguousOverload = rpcErrorMessage.includes("could not choose the best candidate function");
+
+      if (!isMissingFunction && !isAmbiguousOverload) {
+        throw rpcResponse.error;
+      }
+
+      const fallbackResponse = await supabase
+        .from("registrations")
+        .insert({ event_id, data: data as unknown as Json })
+        .select("id")
+        .single();
+
+      if (fallbackResponse.error) {
+        throw fallbackResponse.error;
+      }
+
+      return fallbackResponse.data?.id ?? null;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["registrations"] }),
   });
