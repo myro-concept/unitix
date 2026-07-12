@@ -93,26 +93,16 @@ export function useCreateEvent() {
       ticket_price?: number;
       requires_approval?: boolean;
       capacity?: number;
-      status?: "draft" | "live" | "past";
+      status?: string;
     }) => {
       const slug = generateSlug(input.name);
-
-    console.error("Current user:", user);
-
-    const { data, error } = await supabase
-      .from("events")
-      .insert({
+      const { data, error } = await supabase.from("events").insert({
         ...input,
         slug,
         user_id: user!.id,
-        status: (input.status || "live") as "draft" | "live" | "past",
-      })
-      .select()
-      .single();
-
-    console.log("Insert error:", error);
-
-    if (error) throw error;
+        status: input.status || "live",
+      } as any).select().single();
+      if (error) throw error;
       return data as Event;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["events"] }),

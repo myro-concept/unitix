@@ -88,7 +88,7 @@ export default function SettingsPage() {
     setLastName((metadata.last_name || nameParts.lastName || "") as string);
     setEmailAddress(user.email || "");
     setPhoneNumber((metadata.phone || "") as string);
-    setCampus((metadata.school || "") as string);
+    setCampus(profile.school || "");
 
     setBankName((metadata.bank_name || "") as string);
     setAccountNumber((metadata.account_number || "") as string);
@@ -98,7 +98,7 @@ export default function SettingsPage() {
     setBankSaved(true);
     setIsEditingPersonal(false);
     setIsEditingBank(false);
-  }, [user?.id, user?.email, user?.user_metadata, profile?.id, profile?.full_name]);
+  }, [user?.id, user?.email, user?.user_metadata, profile?.id, profile?.full_name, profile?.school]);
 
   const fullName = useMemo(() => [firstName, lastName].filter(Boolean).join(" ").trim(), [firstName, lastName]);
 
@@ -111,7 +111,7 @@ export default function SettingsPage() {
     setLastName((metadata.last_name || nameParts.lastName || "") as string);
     setEmailAddress(user.email || "");
     setPhoneNumber((metadata.phone || "") as string);
-    setCampus((metadata.school || "") as string);
+    setCampus(profile.school || "");
     setPersonalSaved(true);
     setIsEditingPersonal(false);
   };
@@ -145,7 +145,6 @@ export default function SettingsPage() {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           phone: phoneNumber.trim(),
-          school: campus || null,
         },
       };
 
@@ -158,7 +157,8 @@ export default function SettingsPage() {
 
       await updateProfile.mutateAsync({
         full_name: fullName,
-      });
+        school: campus || null,
+      } as any);
 
       setPersonalSaved(true);
       setIsEditingPersonal(false);

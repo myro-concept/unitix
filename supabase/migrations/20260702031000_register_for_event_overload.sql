@@ -1,4 +1,8 @@
--- Do not create a reversed-parameter overload for register_for_event.
--- Supabase RPC can fail with "Could not choose the best candidate function"
--- when both (uuid, jsonb) and (jsonb, uuid) signatures exist.
-DROP FUNCTION IF EXISTS public.register_for_event(jsonb, uuid);
+CREATE OR REPLACE FUNCTION public.register_for_event(p_data jsonb, p_event_id uuid)
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+  SELECT public.register_for_event(p_event_id, p_data);
+$function$;
