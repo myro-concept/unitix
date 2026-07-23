@@ -624,14 +624,31 @@ export default function CreateEvent() {
                   </div>
                 )}
 
-                {!isPaid && (
-                  <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafaf9] p-4">
-                    <p className="text-sm font-semibold text-[#111111]">Free event</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Students can get tickets without payment.
-                    </p>
+                <button
+                  type="button"
+                  onClick={() => setIsPaid(false)}
+                  className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                    !isPaid
+                      ? "border-[#FF0048] bg-[#fff1f2] shadow-sm"
+                      : "border-[#e5e7eb] bg-[#fafaf9] hover:border-[#fecdd3] hover:bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#111111]">Free event</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Students can get tickets without payment.
+                      </p>
+                    </div>
+                    <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black ${
+                      !isPaid
+                        ? "border-[#FF0048] bg-[#FF0048] text-white"
+                        : "border-[#d1d5db] bg-white text-transparent"
+                    }`}>
+                      ✓
+                    </span>
                   </div>
-                )}
+                </button>
 
                 <div className="space-y-2">
                   <Label>Overall guest capacity</Label>
