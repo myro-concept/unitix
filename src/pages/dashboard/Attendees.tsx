@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRegistrations, Registration } from "@/hooks/useRegistrations";
-import { useRegistrationStats } from "@/hooks/useRegistrations";
+import { useEvents } from "@/hooks/useEvents";
 import { format } from "date-fns";
 
 const statusStyle: Record<string, string> = {
@@ -20,6 +20,23 @@ type SortColumn = "name" | "email" | "event" | "status" | "date";
 type SortDir = "asc" | "desc";
 const PAGE_SIZE = 15;
 
+const getPayerName = (data: Record<string, string>) =>
+  data["Contact Name"] || data["Full Name"] || data["Name"] || "—";
+
+const getPayerEmail = (data: Record<string, string>) =>
+  data["Contact Email"] || data["Email Address"] || data["Email"] || "—";
+
+const getPaymentSummary = (data: Record<string, string>) => {
+  const raw = data["Order Total"] || data["Ticket Price"] || "";
+  const n = Number(String(raw).replace(/[^\d.-]/g, ""));
+
+  if (Number.isFinite(n) && n > 0) {
+    return { label: `Paid (₦${n.toLocaleString()})`, paid: true };
+  }
+
+  return { label: "Free", paid: false };
+};
+
 const Attendees = () => {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
@@ -28,15 +45,22 @@ const Attendees = () => {
   const [page, setPage] = useState(0);
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
   const { data: registrations, isLoading } = useRegistrations();
-  const { data: stats } = useRegistrationStats();
+  const { data: events } = useEvents();
+
+  const stats = useMemo(() => {
+    if (!registrations || !events) return null;
+    return {
+      total: registrations.length,
+      registrations,
+      activeEvents: events.filter(e => (e as any).status === "live").length,
+    };
+  }, [registrations, events]);
 
   const eventOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    registrations?.forEach(r => {
-      if (r.events?.name && r.event_id) map.set(r.event_id, r.events.name);
-    });
-    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [registrations]);
+    return (events || [])
+      .map((e) => [e.id, e.name] as const)
+      .sort((a, b) => a[1].localeCompare(b[1]));
+  }, [events]);
 
   const handleSort = (col: SortColumn) => {
     if (sortColumn === col) {
@@ -91,12 +115,16 @@ const Attendees = () => {
 
   const handleExportCSV = () => {
     if (!filtered?.length) return;
-    const headers = ["Name", "Email", "Event", "Status", "Date"];
+    const headers = ["Name", "Email", "Payer", "Payer Email", "Payment", "Event", "Status", "Date"];
     const rows = filtered.map(r => {
       const data = r.data as Record<string, string>;
+      const payment = getPaymentSummary(data);
       return [
         data["Full Name"] || data["Name"] || "",
         data["Email Address"] || data["Email"] || "",
+        getPayerName(data),
+        getPayerEmail(data),
+        payment.label,
         (r as any).events?.name || "",
         r.status,
         format(new Date(r.created_at), "MMM d, yyyy"),
@@ -183,6 +211,12 @@ const Attendees = () => {
                   <TableHead className="cursor-pointer select-none hidden sm:table-cell" onClick={() => handleSort("email")}>
                     <span className="flex items-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email <SortIcon col="email" /></span>
                   </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payer</span>
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment</span>
+                  </TableHead>
                   <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => handleSort("event")}>
                     <span className="flex items-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event <SortIcon col="event" /></span>
                   </TableHead>
@@ -197,6 +231,7 @@ const Attendees = () => {
               <TableBody>
                 {paged.map((r) => {
                   const data = getRegData(r);
+                  const payment = getPaymentSummary(data);
                   return (
                     <TableRow
                       key={r.id}
@@ -205,6 +240,12 @@ const Attendees = () => {
                     >
                       <TableCell className="font-medium">{data["Full Name"] || data["Name"] || "—"}</TableCell>
                       <TableCell className="text-muted-foreground hidden sm:table-cell">{data["Email Address"] || data["Email"] || "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{getPayerName(data)}</TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <Badge className={`${payment.paid ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"} border-0 text-xs`}>
+                          {payment.label}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">{r.events?.name || "—"}</TableCell>
                       <TableCell>
                         <Badge className={`${statusStyle[r.status] || ""} capitalize text-xs`}>{r.status.replace("_", " ")}</Badge>
@@ -236,7 +277,7 @@ const Attendees = () => {
         </>
       ) : (
         <div className="text-center py-20">
-          <p className="text-muted-foreground">{search || eventFilter !== "all" ? "No matching attendees." : "No registrations yet."}</p>
+          <p className="text-muted-foreground">{search || eventFilter !== "all" ? "No matching attendees." : "No registrations yet. Registrations will appear here after successful checkout."}</p>
         </div>
       )}
 
@@ -247,6 +288,7 @@ const Attendees = () => {
           </DialogHeader>
           {selectedRegistration && (() => {
             const data = getRegData(selectedRegistration);
+            const payment = getPaymentSummary(data);
             return (
               <div className="space-y-4">
                 <div className="space-y-3">
@@ -266,6 +308,20 @@ const Attendees = () => {
                     <span className="text-xs text-muted-foreground font-medium">Status</span>
                     <Badge className={`${statusStyle[selectedRegistration.status] || ""} capitalize text-xs`}>
                       {selectedRegistration.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-medium">Payer</span>
+                    <span className="text-sm">{getPayerName(data)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-medium">Payer email</span>
+                    <span className="text-sm">{getPayerEmail(data)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-medium">Payment</span>
+                    <Badge className={`${payment.paid ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"} border-0 text-xs`}>
+                      {payment.label}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">

@@ -1,10 +1,8 @@
-
 -- Enums
 CREATE TYPE public.app_role AS ENUM ('admin', 'editor', 'viewer');
 CREATE TYPE public.event_status AS ENUM ('draft', 'live', 'past');
 CREATE TYPE public.registration_status AS ENUM ('registered', 'checked_in', 'cancelled');
 CREATE TYPE public.email_template_type AS ENUM ('confirmation', 'reminder', 'followup');
-
 -- Updated_at trigger function
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -13,7 +11,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
-
 -- Profiles
 CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -28,7 +25,6 @@ CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -38,11 +34,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
 -- User roles (separate table per security best practices)
 CREATE TABLE public.user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -51,7 +45,6 @@ CREATE TABLE public.user_roles (
   UNIQUE (user_id, role)
 );
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -63,9 +56,7 @@ AS $$
     SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role
   )
 $$;
-
 CREATE POLICY "Users can view own roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
-
 -- Events
 CREATE TABLE public.events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -94,7 +85,6 @@ CREATE POLICY "Public can view live events by slug" ON public.events FOR SELECT 
 CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE INDEX idx_events_slug ON public.events (slug);
 CREATE INDEX idx_events_user_id ON public.events (user_id);
-
 -- Form fields
 CREATE TABLE public.form_fields (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -113,7 +103,6 @@ CREATE POLICY "Public can view form fields for live events" ON public.form_field
   EXISTS (SELECT 1 FROM public.events WHERE events.id = form_fields.event_id AND events.status = 'live')
 );
 CREATE INDEX idx_form_fields_event_id ON public.form_fields (event_id);
-
 -- Registrations
 CREATE TABLE public.registrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -133,7 +122,6 @@ CREATE POLICY "Event owners can update registrations" ON public.registrations FO
   EXISTS (SELECT 1 FROM public.events WHERE events.id = registrations.event_id AND events.user_id = auth.uid())
 );
 CREATE INDEX idx_registrations_event_id ON public.registrations (event_id);
-
 -- Email templates
 CREATE TABLE public.email_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -148,7 +136,6 @@ ALTER TABLE public.email_templates ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage email templates via event ownership" ON public.email_templates FOR ALL USING (
   EXISTS (SELECT 1 FROM public.events WHERE events.id = email_templates.event_id AND events.user_id = auth.uid())
 );
-
 -- Storage bucket for event assets
 INSERT INTO storage.buckets (id, name, public) VALUES ('event-assets', 'event-assets', true);
 CREATE POLICY "Anyone can view event assets" ON storage.objects FOR SELECT USING (bucket_id = 'event-assets');

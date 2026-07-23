@@ -1,5 +1,13 @@
 // @ts-ignore - resolved by Deno at runtime for Edge Functions
-import { serve } from "jsr:@std/http/server";
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+// @ts-ignore - esm.sh types not fully compatible with Deno
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+};
 
 declare const Deno: {
   env: {

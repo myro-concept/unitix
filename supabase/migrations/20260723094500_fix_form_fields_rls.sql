@@ -4,7 +4,6 @@ DROP POLICY IF EXISTS "Users can manage form fields via event ownership" ON publ
 DROP POLICY IF EXISTS "Users can insert form fields via event ownership" ON public.form_fields;
 DROP POLICY IF EXISTS "Users can update form fields via event ownership" ON public.form_fields;
 DROP POLICY IF EXISTS "Users can delete form fields via event ownership" ON public.form_fields;
-
 CREATE POLICY "Public can view form fields for live events"
   ON public.form_fields
   AS PERMISSIVE
@@ -18,7 +17,6 @@ CREATE POLICY "Public can view form fields for live events"
         AND e.status = 'live'::public.event_status
     )
   );
-
 CREATE POLICY "Users can insert form fields via event ownership"
   ON public.form_fields
   AS PERMISSIVE
@@ -32,7 +30,6 @@ CREATE POLICY "Users can insert form fields via event ownership"
         AND e.user_id = auth.uid()
     )
   );
-
 CREATE POLICY "Users can update form fields via event ownership"
   ON public.form_fields
   AS PERMISSIVE
@@ -54,7 +51,6 @@ CREATE POLICY "Users can update form fields via event ownership"
         AND e.user_id = auth.uid()
     )
   );
-
 CREATE POLICY "Users can delete form fields via event ownership"
   ON public.form_fields
   AS PERMISSIVE

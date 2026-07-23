@@ -1,7 +1,6 @@
 -- Ensure profiles has a school column used across the app
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS school text;
-
 -- Keep auto-profile creation aligned with signup metadata
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$

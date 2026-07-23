@@ -1,5 +1,13 @@
-import { serve } from "jsr:@std/http/server";
+// @ts-ignore - resolved by Deno at runtime for Edge Functions
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+// @ts-ignore - esm.sh types not fully compatible with Deno
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +20,7 @@ const naira = new Intl.NumberFormat("en-NG", {
   maximumFractionDigits: 0,
 });
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {

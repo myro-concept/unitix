@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION public.register_for_event(
   p_event_id uuid,
   p_data jsonb
@@ -24,5 +23,4 @@ BEGIN
   RETURN v_id;
 END;
 $$;
-
 NOTIFY pgrst, 'reload schema';

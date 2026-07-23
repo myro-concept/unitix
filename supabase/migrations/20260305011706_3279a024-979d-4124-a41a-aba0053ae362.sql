@@ -1,4 +1,3 @@
-
 -- Allow public to count registrations for live events (needed for attendee counts on public company page)
 CREATE POLICY "Public can view registration counts for live events"
   ON public.registrations

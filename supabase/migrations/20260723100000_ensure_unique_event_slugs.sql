@@ -29,9 +29,7 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
 DROP TRIGGER IF EXISTS ensure_unique_event_slug_trigger ON public.events;
-
 CREATE TRIGGER ensure_unique_event_slug_trigger
 BEFORE INSERT OR UPDATE OF slug, name ON public.events
 FOR EACH ROW

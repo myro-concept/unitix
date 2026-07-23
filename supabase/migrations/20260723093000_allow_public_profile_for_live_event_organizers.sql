@@ -1,6 +1,5 @@
 -- Allow public event pages to read organizer profiles for live events
 DROP POLICY IF EXISTS "Public can view organizers for live events" ON public.profiles;
-
 CREATE POLICY "Public can view organizers for live events"
   ON public.profiles
   AS PERMISSIVE

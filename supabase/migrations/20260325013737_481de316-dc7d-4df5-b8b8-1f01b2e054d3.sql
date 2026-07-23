@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION public.register_for_event(p_event_id uuid, p_data jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
