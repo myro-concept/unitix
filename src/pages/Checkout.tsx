@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useEventBySlug } from "@/hooks/useEvents";
 import { useCreateRegistration } from "@/hooks/useRegistrations";
 import logoGlyph from "@/assets/logo-glyph-160.png";
@@ -97,6 +98,7 @@ const Checkout = () => {
   const livePaystackKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "").trim();
   const testPaystackKey = (import.meta.env.VITE_PAYSTACK_TEST_PUBLIC_KEY || "").trim();
   const paystackPublicKey = isLocalHost && testPaystackKey ? testPaystackKey : livePaystackKey;
+  const paystackMode = paystackPublicKey.startsWith("pk_test_") ? "test" : "live";
 
   const checkoutState = (location.state as CheckoutState) || {
     ticketId: "",
@@ -246,14 +248,14 @@ const Checkout = () => {
         return;
       }
 
-      if (!/^pk_(test|live)_/.test(paystackPublicKey)) {
-        toast.error("Invalid Paystack public key format. Use a key starting with pk_test_ or pk_live_.");
+      if (paystackMode !== "test") {
+        toast.error("Paystack is not in test mode. Replace the public key with a pk_test_ key to continue.");
         setIsProcessing(false);
         return;
       }
 
-      if (isLocalHost && paystackPublicKey.startsWith("pk_live_")) {
-        toast.error("You are on localhost with a live Paystack key. Use VITE_PAYSTACK_TEST_PUBLIC_KEY for local testing.");
+      if (!/^pk_(test|live)_/.test(paystackPublicKey)) {
+        toast.error("Invalid Paystack public key format. Use a key starting with pk_test_ or pk_live_.");
         setIsProcessing(false);
         return;
       }
@@ -271,14 +273,32 @@ const Checkout = () => {
         return;
       }
 
+      const reference = `${event.id}-${Date.now()}`;
+
       const handler = (window as any).PaystackPop.setup({
         key: paystackPublicKey,
         email: finalAttendee.email,
         amount: amountInKobo,
-        ref: `${event.id}-${Date.now()}`,
+        ref: reference,
         callback: () => {
           void (async () => {
             try {
+              const { data, error } = await supabase.functions.invoke("verify-payment", {
+                body: {
+                  reference,
+                },
+              });
+
+              if (error) {
+                console.error(error);
+                toast.error("Payment verification failed.");
+                setIsProcessing(false);
+                return;
+              }
+
+              console.log(data);
+              toast.success("Payment verified!");
+
               await createRegistration.mutateAsync({
                 event_id: event.id,
                 data: registrationPayload,
