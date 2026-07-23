@@ -93,7 +93,8 @@ const Checkout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
   const testPaystackKey = (import.meta.env.VITE_PAYSTACK_TEST_PUBLIC_KEY || "").trim();
-  const paystackPublicKey = testPaystackKey;
+  const publicPaystackKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "").trim();
+  const paystackPublicKey = testPaystackKey || publicPaystackKey;
   const paystackMode = paystackPublicKey.startsWith("pk_test_") ? "test" : "live";
 
   const checkoutState = (location.state as CheckoutState) || {
