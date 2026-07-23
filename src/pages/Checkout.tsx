@@ -92,12 +92,8 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
-  const isLocalHost =
-    typeof window !== "undefined" &&
-    ["localhost", "127.0.0.1"].includes(window.location.hostname);
-  const livePaystackKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "").trim();
   const testPaystackKey = (import.meta.env.VITE_PAYSTACK_TEST_PUBLIC_KEY || "").trim();
-  const paystackPublicKey = isLocalHost && testPaystackKey ? testPaystackKey : livePaystackKey;
+  const paystackPublicKey = testPaystackKey;
   const paystackMode = paystackPublicKey.startsWith("pk_test_") ? "test" : "live";
 
   const checkoutState = (location.state as CheckoutState) || {
@@ -243,7 +239,7 @@ const Checkout = () => {
 
     try {
       if (!paystackPublicKey) {
-        toast.error("Payment is not configured yet. Add VITE_PAYSTACK_PUBLIC_KEY (and VITE_PAYSTACK_TEST_PUBLIC_KEY for localhost).");
+        toast.error("Payment is not configured yet. Add VITE_PAYSTACK_TEST_PUBLIC_KEY for test mode.");
         setIsProcessing(false);
         return;
       }
