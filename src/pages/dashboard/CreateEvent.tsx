@@ -265,14 +265,14 @@ export default function CreateEvent() {
           await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: existingEvent.id })));
         } catch (fieldErr: any) {
           console.warn("Form fields could not be saved:", fieldErr);
-          toast.error(fieldErr?.message || "Event saved, but form fields could not be updated.");
+          toast.error("Event saved, but registration fields could not be updated. Please sync latest database migrations.");
         }
 
         try {
           await saveTicketTypes(existingEvent.id);
         } catch (ticketErr: any) {
           console.warn("Ticket types could not be saved:", ticketErr);
-          toast.error(ticketErr?.message || "Event saved, but ticket types could not be updated.");
+          toast.error("Event saved, but ticket types could not be updated. Please sync latest database migrations.");
         }
 
         toast.success("Event updated");
@@ -285,14 +285,14 @@ export default function CreateEvent() {
         await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: event.id })));
       } catch (fieldErr: any) {
         console.warn("Form fields could not be saved:", fieldErr);
-        toast.error(fieldErr?.message || "Event saved, but form fields could not be created.");
+        toast.error("Event published, but registration fields could not be created. Please sync latest database migrations.");
       }
 
       try {
         await saveTicketTypes(event.id);
       } catch (ticketErr: any) {
         console.warn("Ticket types could not be saved:", ticketErr);
-        toast.error(ticketErr?.message || "Event saved, but ticket types could not be created.");
+        toast.error("Event published, but ticket types could not be created. Please sync latest database migrations.");
       }
 
       setCreatedSlug(event.slug);
