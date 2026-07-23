@@ -121,7 +121,7 @@ const Checkout = () => {
     const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
 
     if (existingScript) {
-      setPaystackReady(true);
+      setPaystackReady(Boolean((window as any).PaystackPop));
       return;
     }
 
@@ -129,7 +129,7 @@ const Checkout = () => {
     script.id = scriptId;
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
-    script.onload = () => setPaystackReady(true);
+    script.onload = () => setPaystackReady(Boolean((window as any).PaystackPop));
     script.onerror = () => toast.error("Could not load payment gateway.");
     document.body.appendChild(script);
 
@@ -300,8 +300,11 @@ const Checkout = () => {
       handler.openIframe();
     } catch (error: any) {
       const message =
+        (typeof error === "string" ? error : undefined) ||
         error?.message ||
         error?.response?.data?.message ||
+        error?.data?.message ||
+        (error ? String(error) : undefined) ||
         "Payment initialization failed. Please try again.";
       console.error("Payment error:", error);
       toast.error(message);
