@@ -53,6 +53,37 @@ const eventTypes = [
   { value: "other", label: "Other Campus Event" },
 ];
 
+function formatDateTimeForLagos(input?: string | null) {
+  if (!input) return { date: "", time: "" };
+
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return { date: "", time: "" };
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value || "";
+
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}
+
+function buildLagosTimestamp(date: string, time: string) {
+  if (!date) return undefined;
+  const hhmm = time ? `${time}:00` : "00:00:00";
+  return `${date}T${hhmm}+01:00`;
+}
+
 export default function CreateEvent() {
   const { slug: editSlug } = useParams<{ slug?: string }>();
   const isEditMode = !!editSlug;
@@ -105,15 +136,15 @@ export default function CreateEvent() {
       }
 
       if (existingEvent.event_date) {
-        const d = new Date(existingEvent.event_date);
-        setStartDate(d.toISOString().split("T")[0]);
-        setStartTime(d.toTimeString().slice(0, 5));
+        const start = formatDateTimeForLagos(existingEvent.event_date);
+        setStartDate(start.date);
+        setStartTime(start.time);
       }
 
       if (existingEvent.event_end_date) {
-        const d = new Date(existingEvent.event_end_date);
-        setEndDate(d.toISOString().split("T")[0]);
-        setEndTime(d.toTimeString().slice(0, 5));
+        const end = formatDateTimeForLagos(existingEvent.event_end_date);
+        setEndDate(end.date);
+        setEndTime(end.time);
       }
 
       setLocationAddress(existingEvent.location_value || "");
@@ -157,10 +188,7 @@ export default function CreateEvent() {
     }
   };
 
-  const buildEventDate = (date: string, time: string) => {
-    if (!date) return undefined;
-    return time ? `${date}T${time}:00` : `${date}T00:00:00`;
-  };
+  const buildEventDate = (date: string, time: string) => buildLagosTimestamp(date, time);
 
   const updateTicketType = (index: number, key: keyof TicketType, value: string) => {
     setTicketTypes((current) =>
