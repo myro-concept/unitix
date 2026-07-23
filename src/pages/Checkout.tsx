@@ -91,7 +91,12 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
-  const paystackPublicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+  const isLocalHost =
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const livePaystackKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "").trim();
+  const testPaystackKey = (import.meta.env.VITE_PAYSTACK_TEST_PUBLIC_KEY || "").trim();
+  const paystackPublicKey = isLocalHost && testPaystackKey ? testPaystackKey : livePaystackKey;
 
   const checkoutState = (location.state as CheckoutState) || {
     ticketId: "",
@@ -236,7 +241,19 @@ const Checkout = () => {
 
     try {
       if (!paystackPublicKey) {
-        toast.error("Payment is not configured yet. Add VITE_PAYSTACK_PUBLIC_KEY before launch.");
+        toast.error("Payment is not configured yet. Add VITE_PAYSTACK_PUBLIC_KEY (and VITE_PAYSTACK_TEST_PUBLIC_KEY for localhost).");
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!/^pk_(test|live)_/.test(paystackPublicKey)) {
+        toast.error("Invalid Paystack public key format. Use a key starting with pk_test_ or pk_live_.");
+        setIsProcessing(false);
+        return;
+      }
+
+      if (isLocalHost && paystackPublicKey.startsWith("pk_live_")) {
+        toast.error("You are on localhost with a live Paystack key. Use VITE_PAYSTACK_TEST_PUBLIC_KEY for local testing.");
         setIsProcessing(false);
         return;
       }
@@ -247,10 +264,17 @@ const Checkout = () => {
         return;
       }
 
+      const amountInKobo = Math.round(total * 100);
+      if (!Number.isFinite(amountInKobo) || amountInKobo <= 0) {
+        toast.error("Invalid payment amount.");
+        setIsProcessing(false);
+        return;
+      }
+
       const handler = (window as any).PaystackPop.setup({
         key: paystackPublicKey,
         email: finalAttendee.email,
-        amount: total * 100,
+        amount: amountInKobo,
         ref: `${event.id}-${Date.now()}`,
         callback: async () => {
           try {
@@ -274,9 +298,13 @@ const Checkout = () => {
       });
 
       handler.openIframe();
-    } catch (error) {
+    } catch (error: any) {
+      const message =
+        error?.message ||
+        error?.response?.data?.message ||
+        "Payment initialization failed. Please try again.";
       console.error("Payment error:", error);
-      toast.error("Payment initialization failed. Please try again.");
+      toast.error(message);
       setIsProcessing(false);
     }
   };

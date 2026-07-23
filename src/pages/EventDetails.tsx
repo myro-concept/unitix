@@ -289,9 +289,7 @@ export default function EventDetails() {
     startDate: event.event_date || undefined,
     endDate: event.event_end_date || undefined,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    eventStatus: event.status === "cancelled"
-      ? "https://schema.org/EventCancelled"
-      : "https://schema.org/EventScheduled",
+    eventStatus: "https://schema.org/EventScheduled",
     location: event.location_value
       ? {
           "@type": "Place",
