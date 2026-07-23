@@ -276,20 +276,22 @@ const Checkout = () => {
         email: finalAttendee.email,
         amount: amountInKobo,
         ref: `${event.id}-${Date.now()}`,
-        callback: async () => {
-          try {
-            await createRegistration.mutateAsync({
-              event_id: event.id,
-              data: registrationPayload,
-            });
-            setIsPaymentSuccessful(true);
-            toast.success("Payment successful! Your registration has been confirmed.");
-            navigate(`/${slug}`);
-          } catch (error: any) {
-            toast.error(error?.message || "Payment succeeded, but registration could not be completed.");
-          } finally {
-            setIsProcessing(false);
-          }
+        callback: () => {
+          void (async () => {
+            try {
+              await createRegistration.mutateAsync({
+                event_id: event.id,
+                data: registrationPayload,
+              });
+              setIsPaymentSuccessful(true);
+              toast.success("Payment successful! Your registration has been confirmed.");
+              navigate(`/${slug}`);
+            } catch (error: any) {
+              toast.error(error?.message || "Payment succeeded, but registration could not be completed.");
+            } finally {
+              setIsProcessing(false);
+            }
+          })();
         },
         onClose: () => {
           setIsProcessing(false);
