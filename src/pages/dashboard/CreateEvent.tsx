@@ -260,10 +260,20 @@ export default function CreateEvent() {
       if (isEditMode && existingEvent?.id) {
         await updateEvent.mutateAsync({ id: existingEvent.id, ...eventData } as any);
 
-        await supabase.from("form_fields").delete().eq("event_id", existingEvent.id);
-        await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: existingEvent.id })));
+        try {
+          await supabase.from("form_fields").delete().eq("event_id", existingEvent.id);
+          await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: existingEvent.id })));
+        } catch (fieldErr: any) {
+          console.warn("Form fields could not be saved:", fieldErr);
+          toast.error(fieldErr?.message || "Event saved, but form fields could not be updated.");
+        }
 
-        await saveTicketTypes(existingEvent.id);
+        try {
+          await saveTicketTypes(existingEvent.id);
+        } catch (ticketErr: any) {
+          console.warn("Ticket types could not be saved:", ticketErr);
+          toast.error(ticketErr?.message || "Event saved, but ticket types could not be updated.");
+        }
 
         toast.success("Event updated");
         navigate(`/dashboard/events/${existingEvent.slug}`);
@@ -271,9 +281,19 @@ export default function CreateEvent() {
       }
 
       const event = await createEvent.mutateAsync(eventData);
-      await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: event.id })));
+      try {
+        await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: event.id })));
+      } catch (fieldErr: any) {
+        console.warn("Form fields could not be saved:", fieldErr);
+        toast.error(fieldErr?.message || "Event saved, but form fields could not be created.");
+      }
 
-      await saveTicketTypes(event.id);
+      try {
+        await saveTicketTypes(event.id);
+      } catch (ticketErr: any) {
+        console.warn("Ticket types could not be saved:", ticketErr);
+        toast.error(ticketErr?.message || "Event saved, but ticket types could not be created.");
+      }
 
       setCreatedSlug(event.slug);
       setShowSuccess(true);
