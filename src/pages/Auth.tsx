@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
