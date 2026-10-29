@@ -29,6 +29,7 @@ import Pricing from "./pages/Pricing";
 import BrowseEvents from "./pages/BrowseEvents";
 import EventDetails from "./pages/EventDetails";
 import Checkout from "./pages/Checkout";
+import TicketCollection from "./pages/TicketCollection";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,8 @@ const App = () => (
               <Route path="/event" element={<NotFound />} />
               <Route path="/event/*" element={<NotFound />} />
               <Route path="/checkout/:slug" element={<Checkout />} />
+              <Route path="/tickets" element={<TicketCollection />} />
+              <Route path="/ticket/:token" element={<TicketCollection />} />
               <Route path="/:slug" element={<EventDetails />} />
 
               {/* Dashboard (protected) */}

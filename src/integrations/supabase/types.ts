@@ -225,27 +225,99 @@ export type Database = {
         }
         Relationships: []
       }
+      issued_tickets: {
+        Row: {
+          amount_paid: number
+          attendee_email: string
+          attendee_name: string
+          attendee_phone: string
+          checked_in_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          registration_id: string
+          status: string
+          ticket_type_id: string | null
+          ticket_type_name: string
+          token: string
+        }
+        Insert: {
+          amount_paid?: number
+          attendee_email: string
+          attendee_name: string
+          attendee_phone?: string
+          checked_in_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          registration_id: string
+          status?: string
+          ticket_type_id?: string | null
+          ticket_type_name: string
+          token?: string
+        }
+        Update: {
+          amount_paid?: number
+          attendee_email?: string
+          attendee_name?: string
+          attendee_phone?: string
+          checked_in_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          registration_id?: string
+          status?: string
+          ticket_type_id?: string | null
+          ticket_type_name?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issued_tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "issued_tickets_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registrations: {
         Row: {
           created_at: string
           data: Json
           event_id: string
           id: string
+          payment_reference: string | null
+          quantity: number
           status: Database["public"]["Enums"]["registration_status"]
+          ticket_type_id: string | null
         }
         Insert: {
           created_at?: string
           data?: Json
           event_id: string
           id?: string
+          payment_reference?: string | null
+          quantity?: number
           status?: Database["public"]["Enums"]["registration_status"]
+          ticket_type_id?: string | null
         }
         Update: {
           created_at?: string
           data?: Json
           event_id?: string
           id?: string
+          payment_reference?: string | null
+          quantity?: number
           status?: Database["public"]["Enums"]["registration_status"]
+          ticket_type_id?: string | null
         }
         Relationships: [
           {
@@ -287,6 +359,27 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      check_in_ticket: {
+        Args: { p_event_id: string; p_token: string }
+        Returns: Json
+      }
+      complete_ticket_checkout: {
+        Args: {
+          p_attendees: Json
+          p_event_id: string
+          p_payment_reference?: string | null
+          p_quantity: number
+          p_registration_data: Json
+          p_ticket_name: string
+          p_ticket_type_id: string | null
+          p_verified_unit_price: number
+        }
+        Returns: Json
+      }
+      get_tickets_by_tokens: {
+        Args: { p_tokens: string[] }
+        Returns: Json
       }
       register_for_event: {
         Args: { p_data: Json; p_event_id: string }

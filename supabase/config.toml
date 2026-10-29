@@ -1,1 +1,4 @@
 project_id = "opbjhmyprbiddtcwksip"
+
+[functions.checkout-orders]
+verify_jwt = false

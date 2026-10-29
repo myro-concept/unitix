@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from "react";
+import { useState, useEffect, useMemo, type ChangeEvent } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -17,10 +17,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useEventBySlug } from "@/hooks/useEvents";
-import { useCreateRegistration } from "@/hooks/useRegistrations";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 interface ContactInfo {
@@ -42,6 +42,89 @@ interface CheckoutState {
   quantity: number;
   ticketName: string;
   price: number;
+}
+
+interface PaystackHandler {
+  openIframe: () => void;
+}
+
+interface PaystackPop {
+  setup: (options: {
+    key: string;
+    email: string;
+    amount: number;
+    ref: string;
+    callback: () => void;
+    onClose: () => void;
+  }) => PaystackHandler;
+}
+
+interface PaystackWindow extends Window {
+  PaystackPop?: PaystackPop;
+}
+
+function getErrorMessage(error: unknown): string | undefined {
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (!isRecord(error)) return undefined;
+
+  if (typeof error.message === "string") return error.message;
+
+  if (isRecord(error.response)) {
+    const responseData = error.response.data;
+    if (isRecord(responseData)) {
+      const message = responseData.message;
+      if (typeof message === "string") return message;
+    }
+  }
+
+  if (isRecord(error.data)) {
+    const message = error.data.message;
+    if (typeof message === "string") return message;
+  }
+
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+async function getFunctionErrorMessage(error: unknown): Promise<string | undefined> {
+  if (!isRecord(error) || !(error.context instanceof Response)) {
+    return getErrorMessage(error);
+  }
+
+  try {
+    const body: unknown = await error.context.clone().json();
+    if (isRecord(body) && typeof body.error === "string") {
+      return body.error;
+    }
+    if (isRecord(body) && typeof body.message === "string") {
+      return body.message;
+    }
+  } catch {
+    try {
+      const body = await error.context.clone().text();
+      if (body) return body;
+    } catch {
+      return getErrorMessage(error);
+    }
+  }
+
+  return getErrorMessage(error);
+}
+
+function createPaymentReference(eventId: string): string {
+  const timestamp = Date.now().toString(36);
+  const cryptoApi = globalThis.crypto;
+  const randomSuffix = cryptoApi?.getRandomValues
+    ? Array.from(cryptoApi.getRandomValues(new Uint8Array(16)), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("")
+    : Math.random().toString(36).slice(2);
+
+  return `${eventId}-${timestamp}-${randomSuffix}`;
 }
 
 const footerLinks = {
@@ -71,7 +154,6 @@ const Checkout = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: event, isLoading } = useEventBySlug(slug);
-  const createRegistration = useCreateRegistration();
   const [paystackReady, setPaystackReady] = useState(false);
 
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
@@ -81,12 +163,7 @@ const Checkout = () => {
     phone: "",
   });
 
-  const [attendeeInfo, setAttendeeInfo] = useState<AttendeeInfo>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-  });
+  const [attendeeInfo, setAttendeeInfo] = useState<AttendeeInfo[]>([]);
 
   const [useContactForAttendee, setUseContactForAttendee] = useState(true);
   const [couponCode, setCouponCode] = useState("");
@@ -95,12 +172,12 @@ const Checkout = () => {
   const testPaystackKey = (import.meta.env.VITE_PAYSTACK_TEST_PUBLIC_KEY || "").trim();
   const paystackPublicKey = testPaystackKey;
 
-  const checkoutState = (location.state as CheckoutState) || {
+  const checkoutState = useMemo(() => (location.state as CheckoutState) || {
     ticketId: "",
     quantity: 1,
     ticketName: "General Admission",
     price: 0,
-  };
+  }, [location.state]);
 
   useEffect(() => {
     if (!checkoutState.ticketId) {
@@ -118,7 +195,7 @@ const Checkout = () => {
     const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
 
     if (existingScript) {
-      setPaystackReady(Boolean((window as any).PaystackPop));
+      setPaystackReady(Boolean((window as PaystackWindow).PaystackPop));
       return;
     }
 
@@ -126,7 +203,7 @@ const Checkout = () => {
     script.id = scriptId;
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
-    script.onload = () => setPaystackReady(Boolean((window as any).PaystackPop));
+    script.onload = () => setPaystackReady(Boolean((window as PaystackWindow).PaystackPop));
     script.onerror = () => toast.error("Could not load payment gateway.");
     document.body.appendChild(script);
 
@@ -134,7 +211,7 @@ const Checkout = () => {
       script.onload = null;
       script.onerror = null;
     };
-  }, []);
+  }, [checkoutState.price]);
 
   if (isLoading) {
     return (
@@ -161,9 +238,15 @@ const Checkout = () => {
     setContactInfo((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAttendeeChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleAttendeeChange = (index: number, e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setAttendeeInfo((prev) => ({ ...prev, [name]: value }));
+    setAttendeeInfo((prev) => {
+      const next = Array.from({ length: Math.max(prev.length, index + 1) }, (_, i) =>
+        prev[i] || { firstName: "", lastName: "", email: "", phone: "" },
+      );
+      next[index] = { ...next[index], [name]: value };
+      return next;
+    });
   };
 
   const handleApplyCoupon = () => {
@@ -174,42 +257,68 @@ const Checkout = () => {
     toast.info("Coupon validation coming soon");
   };
 
-  const buildRegistrationPayload = (finalAttendee: AttendeeInfo) => ({
-    "Full Name": `${finalAttendee.firstName} ${finalAttendee.lastName}`.trim(),
-    "Email Address": finalAttendee.email.trim(),
-    "Phone Number": finalAttendee.phone.trim(),
-    "Ticket Type": checkoutState.ticketName,
-    Quantity: String(checkoutState.quantity),
-    "Ticket Price": String(checkoutState.price),
-    "Order Total": String(total),
-    "Contact Name": `${contactInfo.firstName} ${contactInfo.lastName}`.trim(),
-    "Contact Email": contactInfo.email.trim(),
-    "Contact Phone": contactInfo.phone.trim(),
-  });
-
-  const persistRegistration = async (registrationPayload: Record<string, string>) => {
-    try {
-      await createRegistration.mutateAsync({
+  const createIssuedTickets = async (
+    finalAttendees: AttendeeInfo[],
+    paymentReference: string | null,
+  ) => {
+    const { data, error } = await supabase.functions.invoke("checkout-orders", {
+      body: {
         event_id: event.id,
-        data: registrationPayload,
-      });
-      return;
-    } catch (rpcError: any) {
-      // Fallback for environments where register_for_event RPC is unavailable/misconfigured.
-      console.warn("register_for_event RPC failed, attempting direct insert:", rpcError);
+        ticket_type_id: checkoutState.ticketId === "general-admission" ? null : checkoutState.ticketId,
+        ticket_name: checkoutState.ticketName,
+        attendees: finalAttendees.map((attendee) => ({
+          first_name: attendee.firstName.trim(),
+          last_name: attendee.lastName.trim(),
+          email: attendee.email.trim(),
+          phone: attendee.phone.trim(),
+        })),
+        contact: {
+          full_name: `${contactInfo.firstName} ${contactInfo.lastName}`.trim(),
+          email: contactInfo.email.trim(),
+          phone: contactInfo.phone.trim(),
+        },
+        payment_reference: paymentReference,
+      },
+    });
+
+    if (error) {
+      throw new Error(
+        await getFunctionErrorMessage(error) || "Ticket checkout could not be completed.",
+      );
     }
 
-    const { error: insertError } = await supabase
-      .from("registrations")
-      .insert({
-        event_id: event.id,
-        data: registrationPayload as any,
-        status: "registered",
-      } as any);
-
-    if (insertError) {
-      throw insertError;
+    if (!data || !Array.isArray(data.tickets)) {
+      throw new Error("Checkout completed, but ticket details were not returned.");
     }
+
+    const tokens = data.tickets.flatMap((ticket: unknown) => {
+      if (
+        typeof ticket === "object" &&
+        ticket !== null &&
+        "token" in ticket &&
+        typeof ticket.token === "string"
+      ) {
+        return [ticket.token];
+      }
+      return [];
+    });
+
+    if (
+      tokens.length !== finalAttendees.length ||
+      new Set(tokens).size !== finalAttendees.length ||
+      tokens.some((token) => !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token))
+    ) {
+      throw new Error("Ticket issuance did not return one ticket for each attendee.");
+    }
+
+    const emailDelivery = isRecord(data.email_delivery) ? data.email_delivery : null;
+    return {
+      tokens,
+      emailSent: typeof emailDelivery?.sent === "number" && emailDelivery.sent > 0,
+      emailFailed: !emailDelivery ||
+        typeof emailDelivery.failed !== "number" ||
+        emailDelivery.failed > 0,
+    };
   };
 
   const handleCompleteOrder = async () => {
@@ -228,30 +337,39 @@ const Checkout = () => {
       return;
     }
 
-    const finalAttendee = useContactForAttendee ? contactInfo : attendeeInfo;
+    const finalAttendees = Array.from({ length: checkoutState.quantity }, (_, index) =>
+      index === 0 && useContactForAttendee
+        ? contactInfo
+        : attendeeInfo[index] || { firstName: "", lastName: "", email: "", phone: "" },
+    );
 
-    if (
-      !finalAttendee.firstName ||
-      !finalAttendee.lastName ||
-      !finalAttendee.email ||
-      !finalAttendee.phone
-    ) {
-      toast.error("Please fill in all attendee information");
+    if (finalAttendees.some((attendee) =>
+      !attendee.firstName.trim() ||
+      !attendee.lastName.trim() ||
+      !attendee.email.trim() ||
+      !attendee.phone.trim()
+    )) {
+      toast.error("Please fill in all attendee information for each ticket");
       return;
     }
 
     setIsProcessing(true);
 
-    const registrationPayload = buildRegistrationPayload(finalAttendee);
-
     if (total <= 0) {
       try {
-        await persistRegistration(registrationPayload);
+        const { tokens, emailSent, emailFailed } = await createIssuedTickets(finalAttendees, null);
         setIsPaymentSuccessful(true);
-        toast.success("Registration successful! Your spot has been reserved.");
-        navigate(`/${slug}`);
-      } catch (error: any) {
-        toast.error(error?.message || "Registration failed. Please try again.");
+        toast.success("Registration successful! Your tickets are ready.");
+        if (emailSent) {
+          toast.success(`Ticket links sent to ${contactInfo.email.trim()}.`);
+        } else if (emailFailed) {
+          toast.warning("Your tickets are ready, but the email could not be sent. You can open them now and check your contact email.");
+        }
+        const params = new URLSearchParams();
+        tokens.forEach((token) => params.append("token", token));
+        navigate(`/tickets?${params.toString()}`);
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error) || "Ticket issuance failed. Please try again.");
       } finally {
         setIsProcessing(false);
       }
@@ -265,13 +383,14 @@ const Checkout = () => {
         return;
       }
 
-      if (!/^pk_(test|live)_/.test(paystackPublicKey)) {
-        toast.error("Invalid Paystack public key format. Use a key starting with pk_test_ or pk_live_.");
+      if (!paystackPublicKey.startsWith("pk_test_")) {
+        toast.error("Checkout is in test mode. Use a Paystack test public key starting with pk_test_.");
         setIsProcessing(false);
         return;
       }
 
-      if (!(window as any).PaystackPop || !paystackReady) {
+      const paystackPop = (window as PaystackWindow).PaystackPop;
+      if (!paystackPop || !paystackReady) {
         toast.error("Payment gateway is not ready yet. Please try again.");
         setIsProcessing(false);
         return;
@@ -284,49 +403,29 @@ const Checkout = () => {
         return;
       }
 
-      const reference = `${event.id}-${Date.now()}`;
+      const reference = createPaymentReference(event.id);
 
-      const handler = (window as any).PaystackPop.setup({
+      const handler = paystackPop.setup({
         key: paystackPublicKey,
-        email: finalAttendee.email,
+        email: contactInfo.email.trim(),
         amount: amountInKobo,
         ref: reference,
         callback: () => {
           void (async () => {
             try {
-              const { data, error } = await supabase.functions.invoke("verify-payment", {
-                body: {
-                  reference,
-                },
-              });
-
-              if (error) {
-                console.error(error);
-                const verifyMessage =
-                  (error as any)?.message ||
-                  "Payment verification failed.";
-
-                // In test mode, allow registration to continue so local/UAT flows can still be validated.
-                if (paystackPublicKey.startsWith("pk_test_")) {
-                  toast.info(`Verification warning (test mode): ${verifyMessage}`);
-                } else {
-                  toast.error(verifyMessage);
-                  setIsProcessing(false);
-                  return;
-                }
-              }
-
-              if (data?.success) {
-                console.log(data);
-                toast.success("Payment verified!");
-              }
-
-              await persistRegistration(registrationPayload);
+              const { tokens, emailSent, emailFailed } = await createIssuedTickets(finalAttendees, reference);
               setIsPaymentSuccessful(true);
-              toast.success("Payment successful! Your registration has been confirmed.");
-              navigate(`/${slug}`);
-            } catch (error: any) {
-              toast.error(error?.message || "Payment succeeded, but registration could not be completed.");
+              toast.success("Payment verified and tickets issued.");
+              if (emailSent) {
+                toast.success(`Ticket links sent to ${contactInfo.email.trim()}.`);
+              } else if (emailFailed) {
+                toast.warning("Your tickets are ready, but the email could not be sent. You can open them now and check your contact email.");
+              }
+              const params = new URLSearchParams();
+              tokens.forEach((token) => params.append("token", token));
+              navigate(`/tickets?${params.toString()}`);
+            } catch (error: unknown) {
+              toast.error(getErrorMessage(error) || "Payment could not be verified or tickets could not be issued.");
             } finally {
               setIsProcessing(false);
             }
@@ -339,21 +438,13 @@ const Checkout = () => {
       });
 
       handler.openIframe();
-    } catch (error: any) {
-      const message =
-        (typeof error === "string" ? error : undefined) ||
-        error?.message ||
-        error?.response?.data?.message ||
-        error?.data?.message ||
-        (error ? String(error) : undefined) ||
-        "Payment initialization failed. Please try again.";
+    } catch (error: unknown) {
+      const message = getErrorMessage(error) || "Payment initialization failed. Please try again.";
       console.error("Payment error:", error);
       toast.error(message);
       setIsProcessing(false);
     }
   };
-
-  const attendeeValues = useContactForAttendee ? contactInfo : attendeeInfo;
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -362,23 +453,20 @@ const Checkout = () => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
         .checkout-page * { box-sizing: border-box; }
-        .checkout-logo { display:flex; align-items:center; gap:9px; text-decoration:none; }
-        .checkout-logo-mark { border-radius:9px; background:#FF0048; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-        .checkout-logo span { font-weight:900; letter-spacing:-0.6px; color:#111111; }
-        .checkout-nav { position:fixed; top:0; left:0; right:0; z-index:9999; background:rgba(250,250,249,0.94); border-bottom:1px solid #e5e7eb; }
-        .checkout-nav-inner { max-width:1200px; height:70px; margin:0 auto; padding:0 32px; display:flex; align-items:center; justify-content:space-between; position:relative; }
-        .checkout-nav-links { display:flex; align-items:center; gap:32px; position:absolute; left:50%; transform:translateX(-50%); }
-        .checkout-nav-links a { color:#6b7280; text-decoration:none; font-size:14px; font-weight:600; transition:color 0.2s ease; }
-        .checkout-nav-links a:hover { color:#FF0048; }
-        .checkout-nav-actions { display:flex; align-items:center; gap:10px; }
-        .checkout-login-link { color:#374151; font-size:14px; font-weight:600; text-decoration:none; padding:9px 16px; border-radius:10px; }
-        .checkout-primary-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; text-decoration:none; font-size:15px; font-weight:800; transition:transform 0.2s ease, opacity 0.2s ease; background:#FF0048; color:white; padding:13px 26px; }
-        .checkout-primary-btn:hover { transform:translateY(-1px); }
-        .checkout-mobile-btn { display:none; width:42px; height:42px; border:1px solid #e5e7eb; border-radius:12px; background:white; color:#111111; align-items:center; justify-content:center; cursor:pointer; }
-        .checkout-mobile-menu { position:fixed; top:65px; left:0; right:0; bottom:0; z-index:10000; background:#fafaf9; padding:20px; overflow-y:auto; border-top:1px solid #e5e7eb; }
-        .checkout-mobile-menu a { display:block; padding:15px 0; color:#111111; text-decoration:none; font-weight:800; border-bottom:1px solid #f1f1f1; }
-        .checkout-mobile-menu .checkout-primary-btn { display:flex !important; width:100%; height:56px; padding:0 !important; color:white !important; border-bottom:0 !important; margin-top:14px; }
-        .checkout-mobile-login { display:flex !important; width:100%; height:56px; align-items:center; justify-content:center; background:#111111; color:#ffffff !important; border-radius:16px; border-bottom:0 !important; margin-top:14px; text-decoration:none; font-weight:800; }
+        .nav { position:fixed; top:0; left:0; right:0; z-index:9999; background:#ffffff; border-bottom:1px solid #e5e7eb; }
+        .nav-inner { max-width:1200px; height:70px; margin:0 auto; padding:0 32px; display:flex; align-items:center; justify-content:space-between; position:relative; }
+        .nav-links { display:flex; align-items:center; gap:32px; position:absolute; left:50%; transform:translateX(-50%); }
+        .nav-links a { color:#6b7280; text-decoration:none; font-size:14px; font-weight:600; transition:color 0.2s ease; }
+        .nav-links a:hover { color:#FF0048; }
+        .nav-actions { display:flex; align-items:center; gap:10px; }
+        .login-link { color:#374151; font-size:14px; font-weight:700; text-decoration:none; padding:9px 16px; }
+        .primary-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; text-decoration:none; font-size:15px; font-weight:900; transition:transform 0.2s ease; background:#FF0048; color:#ffffff; padding:13px 26px; }
+        .primary-btn:hover { transform:translateY(-1px); }
+        .mobile-menu-button { display:none; width:42px; height:42px; border:1px solid #e5e7eb; border-radius:12px; background:#ffffff; color:#111111; align-items:center; justify-content:center; cursor:pointer; position:relative; z-index:10001; }
+        .mobile-menu { position:fixed; top:0; left:0; right:0; bottom:0; z-index:10000; background:#fafaf9; padding:20px; overflow-y:auto; }
+        .mobile-menu a { display:block; padding:15px 0; color:#111111; text-decoration:none; font-weight:800; font-size:15px; border-bottom:1px solid #f1f1f1; }
+        .mobile-menu .primary-btn, .mobile-menu .mobile-login-btn { display:flex !important; width:100%; height:56px; align-items:center; justify-content:center; padding:0 !important; border-bottom:0 !important; margin-top:14px; }
+        .mobile-login-btn { background:#111111; color:#ffffff !important; border-radius:16px; }
         .checkout-footer { border-top:none; background:#0b1020; }
         .checkout-footer-inner { max-width:1200px; margin:0 auto; padding:56px 32px 32px; }
         .checkout-footer-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:40px; margin-bottom:48px; }
@@ -394,29 +482,27 @@ const Checkout = () => {
         .checkout-footer-bottom p { color:#9ca3af; font-size:13px; margin:0; }
         .checkout-footer-bottom a { color:#FF0048; text-decoration:none; font-weight:800; font-size:13px; }
         @media (max-width: 900px) {
-          .checkout-nav-links, .checkout-nav-actions { display:none; }
-          .checkout-mobile-btn { display:flex; }
+          .nav-links, .nav-actions { display:none; }
+          .mobile-menu-button { display:flex; }
           .checkout-footer-grid { grid-template-columns:1fr 1fr; }
           .checkout-footer-bottom { flex-direction:column; align-items:flex-start; }
         }
         @media (max-width: 640px) {
-          .checkout-nav-inner, .checkout-footer-inner { padding-left:20px; padding-right:20px; }
-          .checkout-nav-inner { height:66px; }
+          .nav-inner, .checkout-footer-inner { padding-left:20px; padding-right:20px; }
+          .nav-inner { height:66px; }
+          .mobile-menu { top:66px; }
           .checkout-footer-grid { grid-template-columns:1fr; }
         }
       `}</style>
 
       {/* NAV */}
-      <nav className="checkout-nav">
-        <div className="checkout-nav-inner">
-          <a href="/" className="checkout-logo">
-            <div className="checkout-logo-mark" style={{ width:34, height:34, borderRadius:9, overflow:'hidden', background:'#FF0048', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <img src={logoGlyph} alt="UniTix" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:'9px' }} />
-            </div>
-            <span style={{ fontSize:18, fontFamily:"'Bricolage Grotesque', sans-serif", fontWeight:800, letterSpacing:'-0.02em', color:'#111111' }}>UniTix</span>
+      <nav className="nav">
+        <div className="nav-inner">
+          <a href="/" className="logo">
+            <Logo size="md" />
           </a>
 
-          <div className="checkout-nav-links">
+          <div className="nav-links">
             {[
               { label: "Browse Events", href: "/events" },
               { label: "About Us", href: "/about-us" },
@@ -427,12 +513,12 @@ const Checkout = () => {
             ))}
           </div>
 
-          <div className="checkout-nav-actions">
-            <a href="/auth" className="checkout-login-link">Log in</a>
-            <a href="/auth" className="checkout-primary-btn">Get started <ArrowRight size={15} /></a>
+          <div className="nav-actions">
+            <a href="/auth" className="login-link">Log in</a>
+            <a href="/auth" className="primary-btn">Get started <ArrowRight size={15} /></a>
           </div>
 
-          <button type="button" className="checkout-mobile-btn" onClick={() => setMobileOpen((o) => !o)} aria-label="Toggle menu">
+          <button type="button" className="mobile-menu-button" onClick={() => setMobileOpen((o) => !o)} aria-label="Toggle menu">
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
@@ -440,7 +526,7 @@ const Checkout = () => {
         <AnimatePresence>
           {mobileOpen && (
             <motion.div
-              className="checkout-mobile-menu"
+              className="mobile-menu"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -454,8 +540,8 @@ const Checkout = () => {
               ].map((item) => (
                 <a key={item.label} href={item.href} onClick={closeMobile}>{item.label}</a>
               ))}
-              <a href="/auth" className="checkout-mobile-login" onClick={closeMobile}>Log in</a>
-              <a href="/auth" className="checkout-primary-btn" onClick={closeMobile}>Get started <ArrowRight size={15} /></a>
+              <a href="/auth" className="mobile-login-btn" onClick={closeMobile}>Log in</a>
+              <a href="/auth" className="primary-btn" onClick={closeMobile}>Get started <ArrowRight size={15} /></a>
             </motion.div>
           )}
         </AnimatePresence>
@@ -575,83 +661,78 @@ const Checkout = () => {
                   </span>
                 </label>
 
-                <div className="border-t border-[#ececec] pt-4">
-                  <div className="rounded-xl border border-[#e7e7e7] bg-white px-4 py-4">
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF0048] text-white text-xs font-semibold shrink-0 mt-0.5">
-                        1
-                      </div>
+                <div className="border-t border-[#ececec] pt-4 space-y-4">
+                  {Array.from({ length: checkoutState.quantity }, (_, index) => {
+                    const usesContact = index === 0 && useContactForAttendee;
+                    const attendee = usesContact
+                      ? contactInfo
+                      : attendeeInfo[index] || { firstName: "", lastName: "", email: "", phone: "" };
 
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#111827]">
-                          Ticket 1
-                        </p>
-                        <p className="text-xs text-[#6b7280] leading-5">
-                          {event.name} ({checkoutState.ticketName})
-                        </p>
-                      </div>
-                    </div>
+                    return (
+                      <div key={index} className="rounded-xl border border-[#e7e7e7] bg-white px-4 py-4">
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF0048] text-white text-xs font-semibold shrink-0 mt-0.5">
+                            {index + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#111827]">Ticket {index + 1}</p>
+                            <p className="text-xs text-[#6b7280] leading-5">
+                              {event.name} ({checkoutState.ticketName})
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="mb-2 block text-[12px] font-medium text-[#111827]">
-                          First Name *
-                        </Label>
-                        <Input
-                          name="firstName"
-                          value={attendeeValues.firstName}
-                          onChange={handleAttendeeChange}
-                          disabled={useContactForAttendee}
-                          placeholder="First Name"
-                          className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
-                        />
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="mb-2 block text-[12px] font-medium text-[#111827]">First Name *</Label>
+                            <Input
+                              name="firstName"
+                              value={attendee.firstName}
+                              onChange={(e) => handleAttendeeChange(index, e)}
+                              disabled={usesContact}
+                              placeholder="First Name"
+                              className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-2 block text-[12px] font-medium text-[#111827]">Last Name *</Label>
+                            <Input
+                              name="lastName"
+                              value={attendee.lastName}
+                              onChange={(e) => handleAttendeeChange(index, e)}
+                              disabled={usesContact}
+                              placeholder="Last Name"
+                              className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-2 block text-[12px] font-medium text-[#111827]">Email *</Label>
+                            <Input
+                              name="email"
+                              type="email"
+                              value={attendee.email}
+                              onChange={(e) => handleAttendeeChange(index, e)}
+                              disabled={usesContact}
+                              placeholder="Email"
+                              className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-2 block text-[12px] font-medium text-[#111827]">Phone *</Label>
+                            <Input
+                              name="phone"
+                              type="tel"
+                              value={attendee.phone}
+                              onChange={(e) => handleAttendeeChange(index, e)}
+                              disabled={usesContact}
+                              placeholder="Phone"
+                              className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
+                            />
+                          </div>
+                        </div>
                       </div>
-
-                      <div>
-                        <Label className="mb-2 block text-[12px] font-medium text-[#111827]">
-                          Last Name *
-                        </Label>
-                        <Input
-                          name="lastName"
-                          value={attendeeValues.lastName}
-                          onChange={handleAttendeeChange}
-                          disabled={useContactForAttendee}
-                          placeholder="Last Name"
-                          className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block text-[12px] font-medium text-[#111827]">
-                          Email *
-                        </Label>
-                        <Input
-                          name="email"
-                          type="email"
-                          value={attendeeValues.email}
-                          onChange={handleAttendeeChange}
-                          disabled={useContactForAttendee}
-                          placeholder="Email"
-                          className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block text-[12px] font-medium text-[#111827]">
-                          Phone
-                        </Label>
-                        <Input
-                          name="phone"
-                          type="tel"
-                          value={attendeeValues.phone}
-                          onChange={handleAttendeeChange}
-                          disabled={useContactForAttendee}
-                          placeholder="Phone"
-                          className="h-11 rounded-lg border-[#dbe2ea] bg-white disabled:bg-[#f8fafc] disabled:text-[#6b7280]"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -751,7 +832,7 @@ const Checkout = () => {
 
             <Button
               onClick={handleCompleteOrder}
-              disabled={isProcessing || (total > 0 && !paystackReady) || createRegistration.isPending}
+              disabled={isProcessing || (total > 0 && !paystackReady)}
               className="w-full mt-4 h-14 rounded-xl bg-[#FF0048] hover:bg-[#e60040] text-white font-bold shadow-none text-base"
             >
               {isProcessing ? (

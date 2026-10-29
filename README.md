@@ -36,6 +36,12 @@ npm i
 npm run dev
 ```
 
+## Ticket checkout and check-in
+
+Ticket checkout issues one unique QR ticket for each attendee and emails the order contact a private link to all ticket QR codes on `https://unitix.ng`. Organizers can scan tickets from **Dashboard → Attendees**; each ticket can only be checked in once. Camera scanning requires a secure browser context (HTTPS).
+
+To enable the flow in a Supabase project, apply the database migrations, deploy the `checkout-orders` Edge Function, and configure `PAYSTACK_SECRET_KEY` and `RESEND_API_KEY` in the project’s Edge Function secrets. Paid checkout is restricted to Paystack test keys. Free-ticket checkouts do not require a Paystack secret.
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).

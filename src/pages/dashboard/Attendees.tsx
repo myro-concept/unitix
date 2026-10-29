@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Download, Loader2, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useRegistrations, Registration } from "@/hooks/useRegistrations";
+import { TicketScannerDialog } from "@/components/event-detail/TicketScannerDialog";
+import { useRegistrations, type Registration } from "@/hooks/useRegistrations";
 import { useEvents } from "@/hooks/useEvents";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const statusStyle: Record<string, string> = {
@@ -38,6 +41,7 @@ const getPaymentSummary = (data: Record<string, string>) => {
 };
 
 const Attendees = () => {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [sortColumn, setSortColumn] = useState<SortColumn>("date");
@@ -46,13 +50,24 @@ const Attendees = () => {
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
   const { data: registrations, isLoading } = useRegistrations();
   const { data: events } = useEvents();
+  const { data: issuedTickets, error: issuedTicketsError } = useQuery({
+    queryKey: ["issued-tickets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("issued_tickets")
+        .select("id, registration_id, event_id, attendee_name, status")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const stats = useMemo(() => {
     if (!registrations || !events) return null;
     return {
       total: registrations.length,
       registrations,
-      activeEvents: events.filter(e => (e as any).status === "live").length,
+      activeEvents: events.filter(e => e.status === "live").length,
     };
   }, [registrations, events]);
 
@@ -77,19 +92,19 @@ const Attendees = () => {
     return sortDir === "asc" ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
   };
 
-  const getValue = (r: any, col: SortColumn): string => {
+  const getValue = (r: Registration, col: SortColumn): string => {
     const data = r.data as Record<string, string>;
     switch (col) {
       case "name": return (data["Full Name"] || data["Name"] || "").toLowerCase();
       case "email": return (data["Email Address"] || data["Email"] || "").toLowerCase();
-      case "event": return ((r as any).events?.name || "").toLowerCase();
+      case "event": return (r.events?.name || "").toLowerCase();
       case "status": return r.status;
       case "date": return r.created_at;
     }
   };
 
   const filtered = useMemo(() => {
-    let items = registrations?.filter(r => {
+    const items = registrations?.filter(r => {
       if (eventFilter !== "all" && r.event_id !== eventFilter) return false;
       if (!search) return true;
       const data = r.data as Record<string, string>;
@@ -125,7 +140,7 @@ const Attendees = () => {
         getPayerName(data),
         getPayerEmail(data),
         payment.label,
-        (r as any).events?.name || "",
+        r.events?.name || "",
         r.status,
         format(new Date(r.created_at), "MMM d, yyyy"),
       ];
@@ -157,9 +172,18 @@ const Attendees = () => {
           <h1 className="text-3xl font-display font-bold">Attendees</h1>
           <p className="text-muted-foreground">Manage and export your attendee data.</p>
         </div>
-        <Button variant="outline" size="sm" className="w-full sm:w-auto rounded-full bg-card" onClick={handleExportCSV}>
-          <Download className="w-4 h-4 mr-2" /> Export CSV
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <TicketScannerDialog
+            events={eventOptions.map(([id, name]) => ({ id, name }))}
+            onCheckedIn={() => {
+              void queryClient.invalidateQueries({ queryKey: ["issued-tickets"] });
+              void queryClient.invalidateQueries({ queryKey: ["registrations"] });
+            }}
+          />
+          <Button variant="outline" size="sm" className="w-full rounded-full bg-card sm:w-auto" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-2" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -167,7 +191,7 @@ const Attendees = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "Total registrations", value: stats.total ?? 0 },
-            { label: "Checked in", value: stats.registrations?.filter(r => r.status === "checked_in").length ?? 0 },
+            { label: "Checked-in tickets", value: issuedTickets?.filter(ticket => ticket.status === "used").length ?? 0 },
             { label: "Active events", value: stats.activeEvents ?? 0 },
           ].map((s) => (
             <div key={s.label} className="bg-card rounded-xl p-5">
@@ -176,6 +200,11 @@ const Attendees = () => {
             </div>
           ))}
         </div>
+      )}
+      {issuedTicketsError && (
+        <p className="text-sm text-destructive">
+          Could not load issued ticket statuses: {issuedTicketsError.message}
+        </p>
       )}
 
       {/* Filters */}
@@ -300,7 +329,22 @@ const Attendees = () => {
                   ))}
                 </div>
                 <div className="border-t border-border pt-3 space-y-3">
-                  <div className="flex items-center justify-between">
+                {issuedTickets?.filter(ticket => ticket.registration_id === selectedRegistration.id).length ? (
+                  <div className="space-y-2">
+                    <span className="text-xs text-muted-foreground font-medium">Issued tickets</span>
+                    {issuedTickets
+                      .filter(ticket => ticket.registration_id === selectedRegistration.id)
+                      .map(ticket => (
+                        <div key={ticket.id} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate">{ticket.attendee_name}</span>
+                          <Badge className={`${ticket.status === "used" ? statusStyle.checked_in : ticket.status === "cancelled" ? statusStyle.cancelled : statusStyle.registered} capitalize text-xs`}>
+                            {ticket.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground font-medium">Event</span>
                     <span className="text-sm">{selectedRegistration.events?.name || "—"}</span>
                   </div>
