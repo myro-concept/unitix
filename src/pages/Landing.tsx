@@ -2460,7 +2460,6 @@ export default function Landing() {
             display: block;
             min-height: 1.2em;
             margin-top: 4px;
-            font-size: clamp(28px, 8.5vw, 40px);
             line-height: 1.2;
           }
 
