@@ -2456,6 +2456,18 @@ export default function Landing() {
             letter-spacing: -1.4px;
           }
 
+          .hero h1 .hero-highlight {
+            display: block;
+            min-height: 1.2em;
+            margin-top: 4px;
+            font-size: clamp(28px, 8.5vw, 40px);
+            line-height: 1.2;
+          }
+
+          .hero h1 .hero-highlight > span {
+            display: inline-block;
+          }
+
           .hero-copy {
             font-size: 16px;
           }
