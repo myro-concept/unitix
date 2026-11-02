@@ -1242,12 +1242,15 @@ export default function Landing() {
 
         .event-img-wrap {
           position: relative;
-          aspect-ratio: 1.45;
+          width: 100%;
+          height: 230px;
           overflow: hidden;
           background: #111111;
         }
 
         .event-img {
+          position: absolute;
+          inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
