@@ -22,6 +22,18 @@ type Attendee = {
   phone: string;
 };
 
+type IssuedTicket = {
+  token: string;
+  attendee_name: string;
+  ticket_type_name: string;
+};
+
+type TicketLink = {
+  name: string;
+  type: string;
+  url: string;
+};
+
 function respond(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -279,7 +291,7 @@ serve(async (req: Request) => {
     const fromEmail = Deno.env.get("TICKET_EMAIL_FROM") || "UniTix <no-reply@unitix.ng>";
     let emailsSent = 0;
     let emailsFailed = 0;
-    const ticketLinks = issuedTickets.map((ticket) => ({
+    const ticketLinks: TicketLink[] = issuedTickets.map((ticket: IssuedTicket) => ({
       name: ticket.attendee_name,
       type: ticket.ticket_type_name,
       url: `https://unitix.ng/ticket/${ticket.token}`,
@@ -292,11 +304,11 @@ serve(async (req: Request) => {
       const escapedEventName = escapeHtml(event.name);
       const escapedDate = escapeHtml(formatEventDate(event.event_date));
       const escapedLocation = escapeHtml(event.location_value || "Venue to be announced");
-      const ticketLinksHtml = ticketLinks.map((ticket, index) => {
+      const ticketLinksHtml = ticketLinks.map((ticket: TicketLink, index: number) => {
         const safeUrl = escapeHtml(ticket.url);
         return `<li style="margin:0 0 16px"><strong>Ticket ${index + 1}: ${escapeHtml(ticket.name)}</strong> (${escapeHtml(ticket.type)})<br><a href="${safeUrl}">View ticket and QR code</a><br><span style="font-size:12px;color:#6b7280">${safeUrl}</span></li>`;
       }).join("");
-      const ticketLinksText = ticketLinks.map((ticket, index) =>
+      const ticketLinksText = ticketLinks.map((ticket: TicketLink, index: number) =>
         `Ticket ${index + 1}: ${ticket.name} (${ticket.type})\n${ticket.url}`,
       ).join("\n\n");
 
@@ -355,7 +367,7 @@ serve(async (req: Request) => {
     }
 
     return respond({
-      tickets: issuedTickets.map((ticket) => ({ token: ticket.token })),
+      tickets: issuedTickets.map((ticket: IssuedTicket) => ({ token: ticket.token })),
       email_delivery: {
         sent: emailsSent,
         failed: emailsFailed,

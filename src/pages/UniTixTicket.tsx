@@ -5,13 +5,10 @@ type UniTixTicketProps = {
   ticketId: string;
   eventName: string;
   attendeeName: string;
-  attendeeEmail?: string;
-  attendeePhone?: string;
   ticketType: string;
   eventDate: string;
   eventTime: string;
   venue: string;
-  location: string;
   amountPaid: number;
   currency?: string;
   qrValue: string;
@@ -23,13 +20,10 @@ export default function UniTixTicket({
   ticketId,
   eventName,
   attendeeName,
-  attendeeEmail,
-  attendeePhone,
   ticketType,
   eventDate,
   eventTime,
   venue,
-  location,
   amountPaid,
   currency = "NGN",
   qrValue,
@@ -47,6 +41,10 @@ export default function UniTixTicket({
     used: "Already used",
     cancelled: "Cancelled",
   }[status];
+  const compactTicketId = ticketId.replace(/-/g, "");
+  const ticketNumber = /^[0-9a-f]{32}$/i.test(compactTicketId)
+    ? `UT-${BigInt(`0x${compactTicketId}`).toString(36).toUpperCase()}`
+    : ticketId;
 
   return (
     <div className="unitix-ticket-page min-h-screen bg-[#f0f0f0] px-3 py-6 sm:px-5">
@@ -113,14 +111,11 @@ export default function UniTixTicket({
           </h3>
 
           <div className="mt-3 space-y-0 text-sm">
-            {attendeeEmail && <InfoRow label="Attendee email" value={attendeeEmail} />}
-            {attendeePhone && <InfoRow label="Attendee phone" value={attendeePhone} />}
-            <InfoRow label="Ticket number" value={ticketId} />
+            <InfoRow label="Ticket number" value={ticketNumber} />
             <InfoRow label="Event date" value={eventDate} />
             <InfoRow label="Event time" value={eventTime} />
             <InfoRow label="Ticket type" value={ticketType} />
             <InfoRow label="Venue" value={venue} />
-            <InfoRow label="Location" value={location} />
           </div>
 
           {/* Price card */}
@@ -145,7 +140,7 @@ export default function UniTixTicket({
                   size={176}
                   level="H"
                   marginSize={2}
-                  title={`Ticket ${ticketId}`}
+                  title={`Ticket ${ticketNumber}`}
                 />
               </div>
 
@@ -200,7 +195,7 @@ export default function UniTixTicket({
               Your access, simplified.
             </p>
             <p className="mt-3 text-[10px] text-gray-400">
-              Ticket ID: {ticketId}
+              Ticket ID: {ticketNumber}
             </p>
           </div>
         </footer>

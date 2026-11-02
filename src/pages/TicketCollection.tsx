@@ -9,8 +9,6 @@ interface TicketDetails {
   id: string;
   token: string;
   attendeeName: string;
-  attendeeEmail: string;
-  attendeePhone: string;
   ticketType: string;
   amountPaid: number;
   status: "valid" | "used" | "cancelled";
@@ -34,8 +32,6 @@ function mapTickets(value: Json): TicketDetails[] {
       id,
       token,
       attendee_name,
-      attendee_email,
-      attendee_phone,
       ticket_type_name,
       amount_paid,
       status,
@@ -49,8 +45,6 @@ function mapTickets(value: Json): TicketDetails[] {
       typeof id !== "string" ||
       typeof token !== "string" ||
       typeof attendee_name !== "string" ||
-      typeof attendee_email !== "string" ||
-      typeof attendee_phone !== "string" ||
       typeof ticket_type_name !== "string" ||
       typeof event_name !== "string" ||
       (status !== "valid" && status !== "used" && status !== "cancelled")
@@ -71,8 +65,6 @@ function mapTickets(value: Json): TicketDetails[] {
       id,
       token,
       attendeeName: attendee_name,
-      attendeeEmail: attendee_email,
-      attendeePhone: attendee_phone,
       ticketType: ticket_type_name,
       amountPaid: parsedAmount,
       status,
@@ -179,16 +171,13 @@ export default function TicketCollection() {
                   return (
                     <UniTixTicket
                       key={ticket.id}
-                      ticketId={ticket.token}
+                      ticketId={ticket.id}
                       eventName={ticket.eventName}
                       attendeeName={ticket.attendeeName}
-                      attendeeEmail={ticket.attendeeEmail}
-                      attendeePhone={ticket.attendeePhone}
                       ticketType={ticket.ticketType}
                       eventDate={date.date}
                       eventTime={date.time}
                       venue={ticket.location}
-                      location={ticket.location}
                       amountPaid={ticket.amountPaid}
                       qrValue={ticket.token}
                       eventImage={ticket.eventImage}
