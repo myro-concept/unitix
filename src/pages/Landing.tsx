@@ -42,7 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { ShareSheet } from "@/components/ShareSheet";
 
-const rotatingWords = ["campus events.", "ticket sales.", "student vibes.", "sold-out shows."];
+const rotatingWords = ["ticket sales.", "student vibes.", "sold-out shows."];
 
 const campusChips = ["All Schools", ...CAMPUS_OPTIONS.filter((item) => item !== "Other")];
 
