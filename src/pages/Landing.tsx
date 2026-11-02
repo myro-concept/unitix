@@ -2506,68 +2506,8 @@ export default function Landing() {
             gap: 16px;
           }
 
-          .event-card {
-            border-radius: 18px;
-          }
-
-          .image-date-pill {
-            top: 8px;
-            right: 8px;
-            padding: 6px 8px;
-            font-size: 10px;
-          }
-
-          .price-pill {
-            right: 8px;
-            bottom: 8px;
-            padding: 8px 10px;
-            font-size: 11px;
-          }
-
-          .event-body {
-            padding: 12px;
-          }
-
-          .event-meta {
-            gap: 6px;
-            margin-bottom: 8px;
-          }
-
-          .event-date {
-            flex-basis: 100%;
-            font-size: 11px;
-          }
-
-          .event-school {
-            padding: 4px 8px;
-            font-size: 9px;
-          }
-
-          .event-body h3 {
-            margin-bottom: 6px;
-            font-size: 15px;
-          }
-
-          .event-creator,
-          .event-location {
-            gap: 5px;
-            font-size: 11px;
-            line-height: 1.4;
-          }
-
-          .event-creator {
-            min-height: 30px;
-          }
-
-          .event-location {
-            min-height: 32px;
-          }
-
-          .event-actions {
-            gap: 8px;
-            margin-top: 10px;
-            padding-top: 10px;
-            font-size: 11px;
+          .event-img-wrap {
+            height: 215px;
           }
 
           .section {
