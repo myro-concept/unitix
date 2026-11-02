@@ -1,5 +1,7 @@
 import SEO from "@/seo/SEO";
 import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -16,6 +18,7 @@ import {
   MapPin,
   Megaphone,
   Menu,
+  Plus,
   QrCode,
   Search,
   Share2,
@@ -33,6 +36,7 @@ import eventHackathon from "@/assets/event-hackathon-ai.jpg";
 import eventJam from "@/assets/event-late-night-jam.jpg";
 import eventStartup from "@/assets/event-startup-weekend.jpg";
 import eventSummit from "@/assets/event-vibe-coding-summit.jpg";
+import heroBackground from "@/assets/hero-bg (2).jpg";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
@@ -141,89 +145,6 @@ const footerLinks = {
     { label: "Refund policy", to: "/refund-policy" },
   ],
 };
-
-const CONFETTI_COLORS = ["#FF0048", "#FFD93D", "#6BCB77", "#4D96FF", "#FF6BCB", "#FF9F43"];
-const cornerSeeds = [
-  [
-    { x: -40, y: -20, shape: 0, color: 0, rot: 12, s: 12 },
-    { x: 220, y: -30, shape: 1, color: 1, rot: 45, s: 8 },
-    { x: -25, y: 200, shape: 2, color: 2, rot: -20, s: 14 },
-    { x: 240, y: 50, shape: 0, color: 3, rot: 0, s: 5 },
-    { x: -30, y: 100, shape: 3, color: 4, rot: 30, s: 10 },
-    { x: 200, y: 200, shape: 1, color: 1, rot: 15, s: 6 },
-  ],
-  [
-    { x: 230, y: -20, shape: 1, color: 1, rot: 22, s: 7 },
-    { x: -35, y: 40, shape: 2, color: 3, rot: 15, s: 12 },
-    { x: 40, y: -30, shape: 0, color: 0, rot: 0, s: 10 },
-    { x: 220, y: 190, shape: 3, color: 2, rot: -40, s: 10 },
-    { x: -20, y: 200, shape: 1, color: 4, rot: 60, s: 6 },
-    { x: 150, y: -40, shape: 0, color: 5, rot: 0, s: 8 },
-  ],
-  [
-    { x: 230, y: -25, shape: 0, color: 4, rot: 0, s: 10 },
-    { x: -35, y: 70, shape: 1, color: 1, rot: 35, s: 7 },
-    { x: 40, y: -30, shape: 2, color: 2, rot: 40, s: 13 },
-    { x: 240, y: 180, shape: 0, color: 3, rot: 0, s: 5 },
-    { x: -25, y: 190, shape: 3, color: 0, rot: -25, s: 10 },
-    { x: 100, y: -40, shape: 1, color: 5, rot: 20, s: 8 },
-  ],
-  [
-    { x: -40, y: 30, shape: 1, color: 3, rot: 18, s: 8 },
-    { x: 230, y: -25, shape: 2, color: 1, rot: -30, s: 14 },
-    { x: 50, y: 200, shape: 0, color: 4, rot: 0, s: 8 },
-    { x: 240, y: 100, shape: 3, color: 2, rot: 50, s: 10 },
-    { x: 20, y: -30, shape: 0, color: 0, rot: 0, s: 6 },
-    { x: -30, y: 160, shape: 1, color: 5, rot: -40, s: 7 },
-  ],
-];
-
-function ConfettiLayer() {
-  const corners = [
-    { side: "left" as const, vSide: "top" as const, originX: 105, originY: 95 },
-    { side: "left" as const, vSide: "bottom" as const, originX: 95, originY: -95 },
-    { side: "right" as const, vSide: "top" as const, originX: -105, originY: 95 },
-    { side: "right" as const, vSide: "bottom" as const, originX: -105, originY: -95 },
-  ];
-
-  return (
-    <div className="hero-confetti" aria-hidden="true">
-      {corners.map((corner, ci) =>
-        cornerSeeds[ci].map((seed, si) => {
-          const sz = seed.s;
-          const color = CONFETTI_COLORS[seed.color % CONFETTI_COLORS.length];
-          const shape = ["circle", "square", "triangle", "line"][seed.shape % 4];
-          const sharedMotion = {
-            initial: { [corner.side]: corner.originX, [corner.vSide]: Math.abs(corner.originY), opacity: 0, scale: 0, rotate: 0 },
-            animate: { [corner.side]: seed.x, [corner.vSide]: seed.y < 0 ? Math.abs(seed.y) : seed.y, opacity: 0.85, scale: 1, rotate: seed.rot },
-            transition: { delay: 0.8 + si * 0.06 + ci * 0.04, duration: 0.5, type: "spring" as const, stiffness: 200, damping: 15 },
-          };
-          const base = { position: "absolute" as const };
-
-          if (shape === "circle") return <motion.div key={`${ci}-${si}`} {...sharedMotion} style={{ ...base, width: sz, height: sz, borderRadius: "50%", backgroundColor: color }} />;
-          if (shape === "square") return <motion.div key={`${ci}-${si}`} {...sharedMotion} style={{ ...base, width: sz, height: sz, borderRadius: 2, backgroundColor: color }} />;
-          if (shape === "line") return <motion.div key={`${ci}-${si}`} {...sharedMotion} style={{ ...base, width: sz, height: sz * 0.25, borderRadius: 99, backgroundColor: color }} />;
-
-          return (
-            <motion.div
-              key={`${ci}-${si}`}
-              {...sharedMotion}
-              style={{
-                ...base,
-                width: 0,
-                height: 0,
-                borderLeft: `${sz / 2}px solid transparent`,
-                borderRight: `${sz / 2}px solid transparent`,
-                borderBottom: `${sz * 0.85}px solid ${color}`,
-                backgroundColor: "transparent",
-              }}
-            />
-          );
-        }),
-      )}
-    </div>
-  );
-}
 
 function Logo({ size = "md", textColor }: { size?: "sm" | "md" | "lg"; textColor?: string }) {
   const sz = size === "lg" ? 36 : size === "md" ? 30 : 22;
@@ -374,6 +295,97 @@ function FeatureIllustration({ feature, index }: { feature: (typeof features)[nu
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function OrganizerDashboardPreview() {
+  const previewEvents = [
+    {
+      title: "Freshers Week Party",
+      date: "Fri, Nov 13",
+      attendees: "412 attending",
+      image: eventJam,
+      status: "Live",
+    },
+    {
+      title: "Faculty Dinner",
+      date: "Sat, Nov 21",
+      attendees: "86 attending",
+      image: eventStartup,
+      status: "Draft",
+    },
+  ];
+
+  return (
+    <div
+      className="organizer-dashboard-preview"
+      role="img"
+      aria-label="Preview of the UniTix organizer Events dashboard with sample event data"
+    >
+      <header className="dashboard-preview-header">
+        <div className="dashboard-preview-brand">
+          <img src={logoGlyph} alt="" />
+          <strong>UniTix</strong>
+        </div>
+        <nav className="dashboard-preview-nav" aria-label="Dashboard sections">
+          {["Events", "Attendees", "Analytics", "Wallet", "Settings"].map((item) => (
+            <span key={item} className={item === "Events" ? "active" : ""}>
+              {item}
+            </span>
+          ))}
+        </nav>
+        <span className="dashboard-preview-profile">
+          <span>O</span>
+          Organizer
+        </span>
+      </header>
+
+      <div className="dashboard-preview-content">
+        <div className="dashboard-preview-heading">
+          <div>
+            <h3>Events</h3>
+            <p>Create and manage your event registration pages.</p>
+          </div>
+          <span className="dashboard-preview-create">
+            <Plus size={14} />
+            Create event
+          </span>
+        </div>
+
+        <div className="dashboard-preview-section-title">
+          <span>Upcoming</span>
+          <span>Sample events</span>
+        </div>
+
+        <div className="dashboard-preview-events">
+          {previewEvents.map((event) => (
+            <article className="dashboard-preview-event" key={event.title}>
+              <div className="dashboard-preview-image">
+                <img src={event.image} alt="" />
+                <span className={event.status === "Live" ? "is-live" : ""}>{event.status}</span>
+              </div>
+              <div className="dashboard-preview-event-info">
+                <span>{event.date}</span>
+                <h4>{event.title}</h4>
+                <p>
+                  <Users size={12} />
+                  {event.attendees}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="dashboard-preview-toolbar">
+          <span className="dashboard-preview-search">
+            <Search size={13} />
+            Search events...
+          </span>
+          <span className="dashboard-preview-filter">All statuses</span>
+          <span className="dashboard-preview-event-count">2 events</span>
+        </div>
       </div>
     </div>
   );
@@ -569,9 +581,20 @@ type LandingEvent = {
   category: string;
   tag: string;
   date: string;
+  eventDateKey: string;
   time: string;
   likes: number;
 };
+
+function formatEventDateKey(date?: string | null) {
+  if (!date) return "";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function formatEventDate(date?: string | null) {
   if (!date) return "Date TBA";
@@ -618,14 +641,18 @@ function mapLiveEvent(event: PublicEvent & { profiles?: { id?: string; school?: 
     category: event.event_type || "Events",
     tag: price > 0 ? `From ₦${price.toLocaleString()}` : "Free",
     date: formattedDate,
+    eventDateKey: formatEventDateKey(event.event_date),
     time: formattedTime,
     likes: 0,
   };
 }
 
 export default function Landing() {
+  const navigate = useNavigate();
   const [wordIndex, setWordIndex] = useState(0);
   const [activeCampus, setActiveCampus] = useState("All Schools");
+  const [eventSearch, setEventSearch] = useState("");
+  const [eventDate, setEventDate] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liveEvents, setLiveEvents] = useState<LandingEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -635,9 +662,7 @@ export default function Landing() {
       setWordIndex((prev) => (prev + 1) % rotatingWords.length);
     }, 3000);
 
-    return () => {
-      window.clearInterval(id);
-    };
+    return () => window.clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -691,9 +716,30 @@ export default function Landing() {
     };
   }, []);
 
-  const filteredEvents = activeCampus === "All Schools"
-    ? liveEvents
-    : liveEvents.filter((event) => event.school.toLowerCase().includes(activeCampus.toLowerCase()));
+  const normalizedSearch = eventSearch.trim().toLowerCase();
+  const filteredEvents = liveEvents.filter((event) => {
+    const matchesSearch = !normalizedSearch || [
+      event.title,
+      event.school,
+      event.campus,
+      event.category,
+    ].some((value) => value.toLowerCase().includes(normalizedSearch));
+    const matchesCampus =
+      activeCampus === "All Schools" ||
+      event.school.toLowerCase().includes(activeCampus.toLowerCase());
+    const matchesDate = !eventDate || event.eventDateKey === eventDate;
+    return matchesSearch && matchesCampus && matchesDate;
+  });
+
+  const exploreEvents = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    if (eventSearch.trim()) params.set("q", eventSearch.trim());
+    if (activeCampus !== "All Schools") params.set("campus", activeCampus);
+    if (eventDate) params.set("date", eventDate);
+    const query = params.toString();
+    navigate(query ? `/events?${query}` : "/events");
+  };
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -920,147 +966,148 @@ export default function Landing() {
         }
 
         .hero-shell {
-          max-width: 1200px;
+          max-width: 1440px;
           margin: 0 auto;
-          padding: 150px 32px 96px;
+          padding: 122px 40px 36px;
         }
 
         .hero-stage {
           position: relative;
-          min-height: 580px;
+          min-height: 460px;
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-
-        .hero-confetti {
-          display: block;
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          overflow: visible;
-        }
-
-        .hero-card {
-          position: absolute;
-          width: 260px;
-          z-index: 2;
-        }
-
-        .hero-card-inner {
-          border-radius: 18px;
           overflow: hidden;
-          box-shadow: 0 12px 34px rgba(0, 0, 0, 0.12);
-          background: white;
+          padding: 48px 28px;
+          border-radius: 24px;
+          background-position: center;
+          background-size: cover;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
         }
-
-        .hero-card img {
-          width: 100%;
-          height: 170px;
-          object-fit: cover;
-          display: block;
-        }
-
-        .hero-card div div {
-          background: white;
-          padding: 10px 14px;
-        }
-
-        .hero-card span {
-          font-size: 11px;
-          font-weight: 800;
-          color: #FF0048;
-          background: #fff1f2;
-          padding: 4px 11px;
-          border-radius: 999px;
-        }
-
-        .hero-card.tl { left: -90px; top: 10px; }
-        .hero-card.bl { left: -110px; bottom: 10px; }
-        .hero-card.tr { right: -90px; top: 10px; }
-        .hero-card.br { right: -110px; bottom: 10px; }
 
         .hero-center {
           text-align: center;
-          max-width: 720px;
+          width: 100%;
+          max-width: 920px;
           position: relative;
           z-index: 10;
-          padding: 0 16px;
-        }
-
-        .hero-logo {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 36px;
         }
 
         .hero h1 {
-          font-size: clamp(48px, 6.2vw, 76px);
+          max-width: 850px;
+          margin: 0 auto 18px;
+          color: white;
+          font-size: clamp(40px, 5.2vw, 68px);
           font-weight: 900;
-          line-height: 1.02;
-          letter-spacing: -3px;
-          color: #111111;
-          margin-bottom: 28px;
+          line-height: 1.08;
+          letter-spacing: -2.6px;
         }
 
-        .hero h1 span {
+        .hero h1 .hero-highlight {
           color: #FF0048;
-          position: relative;
-          display: inline-block;
-          min-width: 9ch;
+          white-space: nowrap;
         }
 
         .hero-copy {
-          font-size: clamp(18px, 2vw, 23px);
-          color: #6b7280;
-          max-width: 680px;
-          margin: 0 auto 34px;
+          margin: 0 auto 30px;
+          color: rgba(255,255,255,0.82);
+          max-width: 700px;
+          font-size: clamp(15px, 1.45vw, 18px);
           line-height: 1.55;
+          font-weight: 600;
         }
 
-        .hero-buttons {
+        .hero-search {
+          display: grid;
+          grid-template-columns: minmax(0, 1.25fr) minmax(150px, 0.8fr) minmax(165px, 0.9fr) auto;
+          align-items: center;
+          max-width: 760px;
+          min-height: 66px;
+          margin: 0 auto 28px;
+          padding: 7px;
+          border-radius: 999px;
+          background: white;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-search-field {
           display: flex;
-          flex-wrap: wrap;
+          min-width: 0;
+          height: 46px;
+          align-items: center;
+          gap: 10px;
+          padding: 0 16px;
+          color: #94a3b8;
+          text-align: left;
+        }
+
+        .hero-search-field + .hero-search-field {
+          border-left: 1px solid #eef0f3;
+        }
+
+        .hero-search-field input,
+        .hero-search-field select {
+          width: 100%;
+          min-width: 0;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: #374151;
+          font: inherit;
+          font-size: 14px;
+        }
+
+        .hero-search-field input::placeholder {
+          color: #94a3b8;
+        }
+
+        .hero-search-field select {
+          cursor: pointer;
+        }
+
+        .hero-explore-btn {
+          display: inline-flex;
+          min-height: 48px;
           align-items: center;
           justify-content: center;
-          gap: 14px;
-          margin-bottom: 44px;
-        }
-
-        .hero-stats {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-          max-width: 520px;
-          margin: 0 auto;
-        }
-
-        .hero-stats div {
-          border-radius: 16px;
-          border: 1px solid #e5e7eb;
-          background: white;
-          padding: 14px 10px;
-          text-align: center;
-        }
-
-        .hero-stats strong {
-          display: block;
-          font-size: 20px;
+          gap: 8px;
+          padding: 0 24px;
+          border: 0;
+          border-radius: 999px;
+          background: #FF0048;
+          color: white;
+          cursor: pointer;
+          font: inherit;
+          font-size: 14px;
           font-weight: 900;
-          color: #111111;
-          margin-bottom: 2px;
+          white-space: nowrap;
+          transition: background 0.2s ease, transform 0.2s ease;
         }
 
-        .hero-stats span {
-          font-size: 10px;
-          color: #9ca3af;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          font-weight: 800;
+        .hero-explore-btn:hover {
+          transform: translateY(-1px);
+          background: #e60040;
         }
 
-        .mobile-hero-card {
-          display: none;
+        .hero-create-btn {
+          min-height: 50px;
+          padding: 0 28px;
+          border-radius: 12px;
+          background: #FF0048;
+          color: white;
+          font-size: 14px;
+        }
+
+        .hero-create-btn:hover {
+          background: #e60040;
+        }
+
+        .hero-search-field input:focus-visible,
+        .hero-search-field select:focus-visible,
+        .hero-explore-btn:focus-visible,
+        .hero-create-btn:focus-visible {
+          outline: 3px solid #ff8aa9;
+          outline-offset: 3px;
         }
 
         .campus-strip {
@@ -1160,7 +1207,7 @@ export default function Landing() {
 
         .events-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
           gap: 22px;
         }
 
@@ -1195,7 +1242,7 @@ export default function Landing() {
 
         .event-img-wrap {
           position: relative;
-          height: 230px;
+          aspect-ratio: 1.45;
           overflow: hidden;
           background: #111111;
         }
@@ -1738,86 +1785,250 @@ export default function Landing() {
           font-weight: 800;
         }
 
-        .dashboard-card {
-          border-radius: 28px;
+        .organizer-dashboard-preview {
           overflow: hidden;
+          border: 1px solid #e5e7eb;
+          border-radius: 22px;
+          background: white;
           box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+          color: #111111;
         }
 
-        .dashboard-top {
+        .dashboard-preview-header {
+          min-height: 58px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 10px 16px;
+          border-bottom: 1px solid #e5e7eb;
+          background: rgba(255,255,255,0.96);
+        }
+
+        .dashboard-preview-brand {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+          font-size: 13px;
+        }
+
+        .dashboard-preview-brand img {
+          width: 23px;
+          height: 23px;
+          object-fit: contain;
+        }
+
+        .dashboard-preview-nav {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .dashboard-preview-nav span {
+          padding: 7px 8px;
+          border-radius: 999px;
+          color: #6b7280;
+          font-size: 9px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .dashboard-preview-nav span.active {
           background: #111111;
-          padding: 28px;
           color: white;
         }
 
-        .dashboard-title {
+        .dashboard-preview-profile {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 28px;
+          gap: 6px;
+          color: #6b7280;
+          font-size: 9px;
+          font-weight: 600;
+          white-space: nowrap;
         }
 
-        .dashboard-title p {
-          color: rgba(255,255,255,0.5);
-          font-size: 13px;
-          margin-bottom: 4px;
-        }
-
-        .dashboard-title h3 {
-          font-size: 22px;
-          font-weight: 900;
-        }
-
-        .dashboard-title svg {
-          color: #FF0048;
-        }
-
-        .dashboard-stats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-        }
-
-        .dashboard-stats div {
-          border-radius: 16px;
-          background: rgba(255,255,255,0.08);
-          padding: 16px;
-        }
-
-        .dashboard-stats strong {
-          display: block;
-          font-size: 20px;
-          font-weight: 900;
-          margin-bottom: 4px;
-        }
-
-        .dashboard-stats span {
-          color: rgba(255,255,255,0.5);
-          font-size: 11px;
-        }
-
-        .dashboard-list {
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          background: #fafaf9;
-        }
-
-        .dashboard-list div {
-          display: flex;
+        .dashboard-preview-profile > span {
+          width: 23px;
+          height: 23px;
+          display: inline-flex;
           align-items: center;
-          justify-content: space-between;
-          border-radius: 16px;
-          background: white;
-          padding: 16px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-          font-size: 14px;
+          justify-content: center;
+          border-radius: 50%;
+          background: #f3f4f6;
+          color: #374151;
+          font-size: 10px;
           font-weight: 800;
         }
 
-        .dashboard-list svg {
-          color: #16a34a;
+        .dashboard-preview-content {
+          padding: 20px;
+          background: #fafaf9;
+        }
+
+        .dashboard-preview-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+
+        .dashboard-preview-heading h3 {
+          margin-bottom: 3px;
+          font-size: 19px;
+          font-weight: 900;
+          letter-spacing: -0.3px;
+        }
+
+        .dashboard-preview-heading p {
+          color: #6b7280;
+          font-size: 10px;
+        }
+
+        .dashboard-preview-create {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          flex-shrink: 0;
+          padding: 9px 11px;
+          border-radius: 999px;
+          background: #111111;
+          color: white;
+          font-size: 9px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .dashboard-preview-section-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 9px;
+          color: #6b7280;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .dashboard-preview-section-title span:last-child {
+          color: #9ca3af;
+          font-size: 8px;
+          font-weight: 600;
+          letter-spacing: 0;
+          text-transform: none;
+        }
+
+        .dashboard-preview-events {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .dashboard-preview-event {
+          overflow: hidden;
+          border: 1px solid #e5e7eb;
+          border-radius: 13px;
+          background: white;
+        }
+
+        .dashboard-preview-image {
+          position: relative;
+          height: 105px;
+          overflow: hidden;
+          background: #f3f4f6;
+        }
+
+        .dashboard-preview-image img {
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: cover;
+        }
+
+        .dashboard-preview-image > span {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: white;
+          color: #6b7280;
+          font-size: 8px;
+          font-weight: 800;
+          text-transform: capitalize;
+        }
+
+        .dashboard-preview-image > span.is-live {
+          background: #dcfce7;
+          color: #15803d;
+        }
+
+        .dashboard-preview-event-info {
+          padding: 10px 11px 11px;
+        }
+
+        .dashboard-preview-event-info > span {
+          color: #6b7280;
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .dashboard-preview-event-info h4 {
+          overflow: hidden;
+          margin: 3px 0 6px;
+          font-size: 11px;
+          font-weight: 800;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .dashboard-preview-event-info p {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #6b7280;
+          font-size: 8px;
+        }
+
+        .dashboard-preview-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 14px;
+          padding-top: 12px;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .dashboard-preview-search,
+        .dashboard-preview-filter {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 30px;
+          padding: 0 10px;
+          border: 1px solid #e5e7eb;
+          border-radius: 999px;
+          background: white;
+          color: #6b7280;
+          font-size: 8px;
+        }
+
+        .dashboard-preview-search {
+          flex: 1;
+        }
+
+        .dashboard-preview-event-count {
+          margin-left: auto;
+          color: #9ca3af;
+          font-size: 8px;
+          white-space: nowrap;
         }
 
         .steps-grid {
@@ -2113,29 +2324,15 @@ export default function Landing() {
           gap: 20px;
         }
 
-        @media (max-width: 1100px) {
-          .hero-card {
-            width: 220px;
-          }
-
-          .hero-card img {
-            height: 145px;
-          }
-
-          .hero-card.tl { left: -70px; }
-          .hero-card.bl { left: -85px; }
-          .hero-card.tr { right: -70px; }
-          .hero-card.br { right: -85px; }
-
-          .events-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-
         @media (max-width: 900px) {
           .nav-links,
           .nav-actions {
             display: none;
+          }
+
+          .events-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
           }
 
           .mobile-menu-button {
@@ -2147,84 +2344,25 @@ export default function Landing() {
           }
 
           .hero-shell {
-            padding: 120px 20px 72px;
+            padding: 104px 20px 28px;
           }
 
           .hero-stage {
             min-height: auto;
-            display: block;
-          }
-
-          .hero-confetti,
-          .hero-card {
-            display: none;
+            padding: 56px 24px;
           }
 
           .hero-center {
             max-width: 100%;
-            padding: 0;
-          }
-
-          .hero-logo {
-            margin-bottom: 26px;
           }
 
           .hero h1 {
-            font-size: clamp(42px, 11vw, 64px);
-            line-height: 1.05;
-            letter-spacing: -2.2px;
-            margin-bottom: 22px;
-          }
-
-          .hero h1 span {
-            min-width: auto;
+            font-size: clamp(38px, 8vw, 56px);
+            letter-spacing: -1.8px;
           }
 
           .hero-copy {
-            font-size: 17px;
-            max-width: 560px;
-            margin-bottom: 28px;
-          }
-
-          .hero-buttons {
-            margin-bottom: 28px;
-          }
-
-          .mobile-hero-card {
-            display: block;
-            margin: 6px auto 32px;
-            max-width: 360px;
-            border-radius: 22px;
-            overflow: hidden;
-            background: white;
-            box-shadow: 0 14px 34px rgba(0,0,0,0.12);
-            transform: rotate(-2deg);
-          }
-
-          .mobile-hero-card img {
-            width: 100%;
-            height: 210px;
-            object-fit: cover;
-            display: block;
-          }
-
-          .mobile-hero-card div {
-            padding: 12px 16px;
-          }
-
-          .mobile-hero-card span {
-            display: inline-flex;
-            border-radius: 999px;
-            background: #fff1f2;
-            color: #FF0048;
-            font-size: 12px;
-            font-weight: 900;
-            padding: 5px 12px;
-          }
-
-          .hero-stats {
-            grid-template-columns: repeat(2, 1fr);
-            max-width: 360px;
+            margin-bottom: 24px;
           }
 
           .feature-row-top,
@@ -2253,10 +2391,6 @@ export default function Landing() {
             align-items: flex-start;
           }
 
-          .events-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
           .cta-card .primary-btn {
             width: 100%;
           }
@@ -2268,6 +2402,35 @@ export default function Landing() {
           .footer-inner {
             padding-left: 20px;
             padding-right: 20px;
+          }
+
+          .dashboard-preview-header {
+            gap: 7px;
+            padding: 9px;
+          }
+
+          .dashboard-preview-nav span:not(.active) {
+            display: none;
+          }
+
+          .dashboard-preview-profile {
+            font-size: 0;
+          }
+
+          .dashboard-preview-content {
+            padding: 14px;
+          }
+
+          .dashboard-preview-heading p {
+            max-width: 170px;
+          }
+
+          .dashboard-preview-events {
+            gap: 8px;
+          }
+
+          .dashboard-preview-image {
+            height: 88px;
           }
 
           .nav-inner {
@@ -2286,20 +2449,52 @@ export default function Landing() {
           }
 
           .hero h1 {
-            font-size: clamp(38px, 12vw, 54px);
-            letter-spacing: -1.7px;
+            font-size: clamp(34px, 9.5vw, 48px);
+            letter-spacing: -1.4px;
           }
 
           .hero-copy {
             font-size: 16px;
           }
 
-          .hero-buttons a {
-            width: 100%;
+          .hero-shell {
+            padding: 88px 14px 20px;
           }
 
-          .hero-shell {
-            padding-top: 115px;
+          .hero-stage {
+            min-height: 440px;
+            padding: 40px 18px;
+            border-radius: 18px;
+          }
+
+          .hero-search {
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            padding: 8px;
+            border-radius: 20px;
+          }
+
+          .hero-search-field {
+            height: 44px;
+            padding: 0 10px;
+          }
+
+          .hero-search-field + .hero-search-field {
+            border-left: 0;
+          }
+
+          .hero-search-field:nth-child(2) {
+            border-left: 1px solid #eef0f3;
+          }
+
+          .hero-search-field:nth-child(3) {
+            grid-column: 1 / -1;
+            border-top: 1px solid #eef0f3;
+          }
+
+          .hero-explore-btn {
+            grid-column: 1 / -1;
+            width: 100%;
           }
 
           .events-head {
@@ -2307,11 +2502,72 @@ export default function Landing() {
           }
 
           .events-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
           }
 
-          .event-img-wrap {
-            height: 215px;
+          .event-card {
+            border-radius: 18px;
+          }
+
+          .image-date-pill {
+            top: 8px;
+            right: 8px;
+            padding: 6px 8px;
+            font-size: 10px;
+          }
+
+          .price-pill {
+            right: 8px;
+            bottom: 8px;
+            padding: 8px 10px;
+            font-size: 11px;
+          }
+
+          .event-body {
+            padding: 12px;
+          }
+
+          .event-meta {
+            gap: 6px;
+            margin-bottom: 8px;
+          }
+
+          .event-date {
+            flex-basis: 100%;
+            font-size: 11px;
+          }
+
+          .event-school {
+            padding: 4px 8px;
+            font-size: 9px;
+          }
+
+          .event-body h3 {
+            margin-bottom: 6px;
+            font-size: 15px;
+          }
+
+          .event-creator,
+          .event-location {
+            gap: 5px;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+
+          .event-creator {
+            min-height: 30px;
+          }
+
+          .event-location {
+            min-height: 32px;
+          }
+
+          .event-actions {
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            font-size: 11px;
           }
 
           .section {
@@ -2420,46 +2676,16 @@ export default function Landing() {
 
       <section className="hero">
         <div className="hero-shell">
-          <div className="hero-stage">
-            <ConfettiLayer />
-
-            {[
-              { img: eventChill, tag: "Workshop", pos: "tl", rotate: "rotate(6deg)", from: { x: -80, y: -60 }, delay: 0.2 },
-              { img: eventJam, tag: "Social", pos: "bl", rotate: "rotate(-5deg)", from: { x: -80, y: 60 }, delay: 0.35 },
-              { img: eventStartup, tag: "Hackathon", pos: "tr", rotate: "rotate(-6deg)", from: { x: 80, y: -60 }, delay: 0.25 },
-              { img: eventSummit, tag: "Conference", pos: "br", rotate: "rotate(5deg)", from: { x: 80, y: 60 }, delay: 0.4 },
-            ].map((card) => (
-              <motion.div
-                key={card.pos}
-                className={`hero-card ${card.pos}`}
-                initial={{ opacity: 0, scale: 0.3, x: card.from.x, y: card.from.y }}
-                animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 20, delay: card.delay }}
-              >
-                <div className="hero-card-inner" style={{ transform: card.rotate }}>
-                  <img src={card.img} alt={card.tag} decoding="async" fetchPriority="high" />
-                  <div>
-                    <div>
-                      <span>{card.tag}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-
+          <div className="hero-stage" style={{ backgroundImage: `linear-gradient(rgba(18, 12, 19, 0.66), rgba(18, 12, 19, 0.8)), url("${heroBackground}")` }}>
             <motion.div
               className="hero-center"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
             >
-              <div className="hero-logo">
-                <Logo size="lg" />
-              </div>
-
               <h1>
                 Your campus event plug for{" "}
-                <span>
+                <span className="hero-highlight">
                   <AnimatePresence mode="wait">
                     <motion.span
                       key={rotatingWords[wordIndex]}
@@ -2471,7 +2697,6 @@ export default function Landing() {
                       {rotatingWords[wordIndex]}
                     </motion.span>
                   </AnimatePresence>
-                  <span style={{ visibility: "hidden", display: "block", height: 0, overflow: "hidden" }}>sold-out shows.</span>
                 </span>
               </h1>
 
@@ -2479,35 +2704,45 @@ export default function Landing() {
                 Discover the hottest student events, buy tickets instantly, and help organizers sell and verify tickets without the usual campus stress.
               </p>
 
-              <div className="hero-buttons">
-                <a href="/events" className="dark-btn">
-                  Find Events <ArrowRight size={16} />
-                </a>
-                <a href="/auth" className="outline-btn">
-                  Create Event
-                </a>
-              </div>
+              <form className="hero-search" onSubmit={exploreEvents}>
+                <label className="hero-search-field">
+                  <Search size={16} aria-hidden="true" />
+                  <span className="sr-only">Search events</span>
+                  <input
+                    type="search"
+                    placeholder="Search events..."
+                    value={eventSearch}
+                    onChange={(event) => setEventSearch(event.target.value)}
+                  />
+                </label>
 
-              <div className="mobile-hero-card">
-                <img src={eventSummit} alt="Campus event" decoding="async" fetchPriority="high" />
-                <div>
-                  <span>Campus Event</span>
-                </div>
-              </div>
+                <label className="hero-search-field">
+                  <MapPin size={16} aria-hidden="true" />
+                  <span className="sr-only">Select campus</span>
+                  <select value={activeCampus} onChange={(event) => setActiveCampus(event.target.value)}>
+                    <option value="All Schools">All campuses</option>
+                    {CAMPUS_OPTIONS.filter((campus) => campus !== "Other").map((campus) => (
+                      <option key={campus} value={campus}>{campus}</option>
+                    ))}
+                  </select>
+                </label>
 
-              <div className="hero-stats">
-                {[
-                  ["50+", "campuses"],
-                  ["12k+", "students"],
-                  ["100+", "events"],
-                  ["2 min", "checkout"],
-                ].map(([value, label]) => (
-                  <div key={label}>
-                    <strong>{value}</strong>
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
+                <label className="hero-search-field">
+                  <CalendarDays size={16} aria-hidden="true" />
+                  <span className="sr-only">Choose event date</span>
+                  <input
+                    type="date"
+                    value={eventDate}
+                    onChange={(event) => setEventDate(event.target.value)}
+                  />
+                </label>
+
+                <button type="submit" className="hero-explore-btn">
+                  Explore <ArrowRight size={16} />
+                </button>
+              </form>
+
+              <a href="/auth" className="primary-btn hero-create-btn">Create Event</a>
             </motion.div>
           </div>
         </div>
@@ -2655,39 +2890,7 @@ export default function Landing() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-              <div className="dashboard-card">
-                <div className="dashboard-top">
-                  <div className="dashboard-title">
-                    <div>
-                      <p>Dashboard</p>
-                      <h3>Freshers Party</h3>
-                    </div>
-                    <CalendarDays size={32} />
-                  </div>
-
-                  <div className="dashboard-stats">
-                    {[
-                      ["412", "Tickets sold"],
-                      ["₦824k", "Revenue"],
-                      ["78%", "Capacity"],
-                    ].map(([value, label]) => (
-                      <div key={label}>
-                        <strong>{value}</strong>
-                        <span>{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="dashboard-list">
-                  {["Payment confirmed", "QR ticket generated", "Guest checked in"].map((item) => (
-                    <div key={item}>
-                      <span>{item}</span>
-                      <CheckCircle2 size={20} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <OrganizerDashboardPreview />
             </motion.div>
           </div>
         </div>

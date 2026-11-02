@@ -1,6 +1,6 @@
 import SEO from "@/seo/SEO";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -244,16 +244,17 @@ function EventCard({ event, index }: { event: EventCardItem; index: number }) {
 }
 
 export default function Events() {
+  const [searchParams] = useSearchParams();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selectedSchool, setSelectedSchool] = useState("All Schools");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [selectedSchool, setSelectedSchool] = useState(() => searchParams.get("campus") || "All Schools");
+  const [fromDate, setFromDate] = useState(() => searchParams.get("date") || "");
+  const [toDate, setToDate] = useState(() => searchParams.get("date") || "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileFilterView, setMobileFilterView] = useState<"all" | "campus" | "dates">("all");
   const [openMobileSection, setOpenMobileSection] = useState<"campus" | "dates" | "results" | null>("campus");
   const [campusSearch, setCampusSearch] = useState("");
   const [resultsPerFetch, setResultsPerFetch] = useState(12);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") || "");
   const [liveEvents, setLiveEvents] = useState<EventCardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleEventsCount, setVisibleEventsCount] = useState(12);
