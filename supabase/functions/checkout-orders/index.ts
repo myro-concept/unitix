@@ -28,12 +28,6 @@ type IssuedTicket = {
   ticket_type_name: string;
 };
 
-type TicketLink = {
-  name: string;
-  type: string;
-  url: string;
-};
-
 function respond(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -43,27 +37,6 @@ function respond(body: unknown, status = 200) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  })[character] || character);
-}
-
-function formatEventDate(value: string | null): string {
-  if (!value) return "Date to be announced";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date to be announced";
-  return new Intl.DateTimeFormat("en-NG", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "Africa/Lagos",
-  }).format(date);
 }
 
 serve(async (req: Request) => {
@@ -288,30 +261,14 @@ serve(async (req: Request) => {
     }
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const fromEmail = Deno.env.get("TICKET_EMAIL_FROM") || "UniTix <no-reply@unitix.ng>";
+    const fromEmail = Deno.env.get("TICKET_EMAIL_FROM") || "UniTix <tickets@unitix.ng>";
     let emailsSent = 0;
     let emailsFailed = 0;
-    const ticketLinks: TicketLink[] = issuedTickets.map((ticket: IssuedTicket) => ({
-      name: ticket.attendee_name,
-      type: ticket.ticket_type_name,
-      url: `https://unitix.ng/ticket/${ticket.token}`,
-    }));
 
     if (!resendApiKey) {
       console.error("Ticket email was not sent: RESEND_API_KEY is not configured.");
       emailsFailed = 1;
     } else {
-      const escapedEventName = escapeHtml(event.name);
-      const escapedDate = escapeHtml(formatEventDate(event.event_date));
-      const escapedLocation = escapeHtml(event.location_value || "Venue to be announced");
-      const ticketLinksHtml = ticketLinks.map((ticket: TicketLink, index: number) => {
-        const safeUrl = escapeHtml(ticket.url);
-        return `<li style="margin:0 0 16px"><strong>Ticket ${index + 1}: ${escapeHtml(ticket.name)}</strong> (${escapeHtml(ticket.type)})<br><a href="${safeUrl}">View ticket and QR code</a><br><span style="font-size:12px;color:#6b7280">${safeUrl}</span></li>`;
-      }).join("");
-      const ticketLinksText = ticketLinks.map((ticket: TicketLink, index: number) =>
-        `Ticket ${index + 1}: ${ticket.name} (${ticket.type})\n${ticket.url}`,
-      ).join("\n\n");
-
       try {
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -323,30 +280,13 @@ serve(async (req: Request) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [contact.email.trim()],
-            subject: `Your tickets for ${event.name} - UniTix`,
-            html: `
-              <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto">
-                <h1 style="font-size:24px">Your UniTix tickets are ready</h1>
-                <p>Hi ${escapeHtml(contact.full_name.trim())},</p>
-                <p>Your order for <strong>${escapedEventName}</strong> is confirmed.</p>
-                <p><strong>Date:</strong> ${escapedDate}<br>
-                <strong>Location:</strong> ${escapedLocation}</p>
-                <p>Use each personal ticket link below to view its QR code. Present the QR code at the entrance.</p>
-                <ol style="padding-left:22px">${ticketLinksHtml}</ol>
-                <p>Keep these ticket links private.</p>
-                <p>UniTix<br><a href="https://unitix.ng">unitix.ng</a></p>
-              </div>
-            `,
-            text: [
-              `Hi ${contact.full_name.trim()},`,
-              `Your order for ${event.name} is confirmed.`,
-              `Date: ${formatEventDate(event.event_date)}`,
-              `Location: ${event.location_value || "Venue to be announced"}`,
-              "Use each personal ticket link below to view its QR code. Present the QR code at the entrance.",
-              ticketLinksText,
-              "Keep these ticket links private.",
-              "UniTix - https://unitix.ng",
-            ].join("\n\n"),
+            template: {
+              id: "5e4d5e4d-5e4d-5e4d-5e4d-5e4d5e4d5e4d",
+              variables: {
+                customer_name: contact.full_name.trim(),
+                event_name: event.name,
+              },
+            },
           }),
         });
 
