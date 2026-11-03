@@ -277,7 +277,7 @@ serve(async (req: Request) => {
             "Content-Type": "application/json",
             "Idempotency-Key": `order-tickets-${result.registration_id}`,
           },
-          body: JSON.stringify({
+          body: JSON.stringify(
             from: fromEmail,
             to: [contact.email.trim()],
             template: {
