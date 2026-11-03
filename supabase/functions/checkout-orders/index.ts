@@ -23,9 +23,12 @@ type Attendee = {
 };
 
 type IssuedTicket = {
+  id: string;
   token: string;
   attendee_name: string;
+  attendee_email: string;
   ticket_type_name: string;
+  amount_paid: number | string;
 };
 
 function respond(body: unknown, status = 200) {
@@ -58,6 +61,105 @@ serve(async (req: Request) => {
     const body: unknown = await req.json();
     if (!isRecord(body)) {
       return respond({ error: "Invalid checkout request." }, 400);
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    if (body.action === "send-ticket-email") {
+      const { registration_id, ticket_token, pdf } = body;
+      if (
+        typeof registration_id !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(registration_id) ||
+        typeof ticket_token !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ticket_token) ||
+        !isRecord(pdf) ||
+        typeof pdf.content !== "string" ||
+        pdf.content.length > 7_000_000 ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(pdf.content)
+      ) {
+        return respond({ error: "A valid ticket PDF and ticket reference are required." }, 400);
+      }
+
+      let decodedPdf: string;
+      try {
+        decodedPdf = atob(pdf.content);
+      } catch {
+        return respond({ error: "The ticket PDF is not valid base64 data." }, 400);
+      }
+      if (decodedPdf.length > 5 * 1024 * 1024 || !decodedPdf.startsWith("%PDF-")) {
+        return respond({ error: "The ticket PDF is invalid or too large." }, 400);
+      }
+
+      const { data: ticket, error: ticketError } = await supabase
+        .from("issued_tickets")
+        .select("id, registration_id, event_id, token, attendee_name, attendee_email")
+        .eq("registration_id", registration_id)
+        .eq("token", ticket_token)
+        .maybeSingle();
+      if (ticketError) throw ticketError;
+      if (!ticket) {
+        return respond({ error: "The ticket does not belong to this registration." }, 404);
+      }
+
+      const { data: registration, error: registrationError } = await supabase
+        .from("registrations")
+        .select("id, event_id")
+        .eq("id", registration_id)
+        .maybeSingle();
+      if (registrationError) throw registrationError;
+      if (!registration || registration.event_id !== ticket.event_id) {
+        return respond({ error: "The registration for this ticket could not be verified." }, 404);
+      }
+
+      const { data: event, error: emailEventError } = await supabase
+        .from("events")
+        .select("name")
+        .eq("id", ticket.event_id)
+        .maybeSingle();
+      if (emailEventError) throw emailEventError;
+      if (!event) {
+        return respond({ error: "The ticket event could not be found." }, 404);
+      }
+
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      if (!resendApiKey) {
+        console.error("Ticket email was not sent: RESEND_API_KEY is not configured.");
+        return respond({ email_delivery: { sent: 0, failed: 1 } });
+      }
+
+      try {
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+            "Idempotency-Key": `ticket-${ticket.token}`,
+          },
+          body: JSON.stringify({
+            from: Deno.env.get("TICKET_EMAIL_FROM") || "UniTix <tickets@unitix.ng>",
+            to: [ticket.attendee_email],
+            attachments: [{
+              filename: `unitix-ticket-${ticket.id}.pdf`,
+              content: pdf.content,
+            }],
+            template: {
+              id: "581b0672-44bf-4bc4-a9a1-b83ba4d27fee",
+              variables: {
+                customer_name: ticket.attendee_name,
+                event_name: event.name,
+              },
+            },
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error("Ticket order email failed:", await emailResponse.text());
+          return respond({ email_delivery: { sent: 0, failed: 1 } });
+        }
+        return respond({ email_delivery: { sent: 1, failed: 0 } });
+      } catch (emailError) {
+        console.error("Ticket order email failed:", emailError);
+        return respond({ email_delivery: { sent: 0, failed: 1 } });
+      }
     }
 
     const rawAttendees = body.attendees;
@@ -112,10 +214,9 @@ serve(async (req: Request) => {
       phone: rawContact.phone,
     };
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { data: event, error: eventError } = await supabase
       .from("events")
-      .select("id, name, status, ticket_price, event_date, location_value")
+      .select("id, name, status, ticket_price, event_date, location_value, background_image_url")
       .eq("id", body.event_id)
       .maybeSingle();
 
@@ -252,7 +353,7 @@ serve(async (req: Request) => {
 
     const { data: issuedTickets, error: ticketsError } = await supabase
       .from("issued_tickets")
-      .select("token, attendee_name, ticket_type_name")
+      .select("id, token, attendee_name, attendee_email, ticket_type_name, amount_paid")
       .eq("registration_id", result.registration_id);
 
     if (ticketsError) throw ticketsError;
@@ -260,57 +361,21 @@ serve(async (req: Request) => {
       throw new Error("Checkout completed without issuing one ticket per attendee.");
     }
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const fromEmail = Deno.env.get("TICKET_EMAIL_FROM") || "UniTix <tickets@unitix.ng>";
-    let emailsSent = 0;
-    let emailsFailed = 0;
-
-    if (!resendApiKey) {
-      console.error("Ticket email was not sent: RESEND_API_KEY is not configured.");
-      emailsFailed = 1;
-    } else {
-      try {
-        const emailResponse = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-            "Idempotency-Key": `order-tickets-${result.registration_id}`,
-          },
-          body: JSON.stringify({
-            from: fromEmail,
-            to: [contact.email.trim()],
-            template: {
-              id: "5e4d5e4d-5e4d-5e4d-5e4d-5e4d5e4d5e4d",
-              variables: {
-                customer_name: contact.full_name.trim(),
-                event_name: event.name,
-              },
-            },
-          }),
-        });
-
-        if (!emailResponse.ok) {
-          console.error("Ticket order email failed:", await emailResponse.text());
-          emailsFailed = 1;
-        } else {
-          emailsSent = 1;
-        }
-      } catch (emailError) {
-        console.error("Ticket order email failed:", emailError);
-        emailsFailed = 1;
-      }
-    }
-
-    if (emailsFailed > 0) {
-      console.error(`Ticket email delivery summary: ${emailsSent} sent, ${emailsFailed} failed.`);
-    }
-
     return respond({
-      tickets: issuedTickets.map((ticket: IssuedTicket) => ({ token: ticket.token })),
-      email_delivery: {
-        sent: emailsSent,
-        failed: emailsFailed,
+      registration_id: result.registration_id,
+      tickets: issuedTickets.map((ticket: IssuedTicket) => ({
+        id: ticket.id,
+        token: ticket.token,
+        attendee_name: ticket.attendee_name,
+        attendee_email: ticket.attendee_email,
+        ticket_type_name: ticket.ticket_type_name,
+        amount_paid: ticket.amount_paid,
+      })),
+      event: {
+        name: event.name,
+        date: event.event_date,
+        location: event.location_value,
+        image: event.background_image_url,
       },
     });
   } catch (error) {

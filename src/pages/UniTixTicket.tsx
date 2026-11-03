@@ -1,7 +1,7 @@
 
 import { QRCodeSVG } from "qrcode.react";
 
-type UniTixTicketProps = {
+export type UniTixTicketProps = {
   ticketId: string;
   eventName: string;
   attendeeName: string;
