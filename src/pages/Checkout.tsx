@@ -21,7 +21,6 @@ import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useEventBySlug } from "@/hooks/useEvents";
-import type { UniTixTicketProps } from "@/pages/UniTixTicket";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 interface ContactInfo {
@@ -126,21 +125,6 @@ function createPaymentReference(eventId: string): string {
     : Math.random().toString(36).slice(2);
 
   return `${eventId}-${timestamp}-${randomSuffix}`;
-}
-
-function formatTicketDate(value: string | null) {
-  if (!value) return { date: "Date TBA", time: "Time TBA" };
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { date: "Date TBA", time: "Time TBA" };
-  return {
-    date: date.toLocaleDateString("en-NG", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }),
-    time: date.toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }),
-  };
 }
 
 const footerLinks = {
@@ -307,123 +291,33 @@ const Checkout = () => {
       throw new Error("Checkout completed, but ticket details were not returned.");
     }
 
-    if (
-      typeof data.registration_id !== "string" ||
-      !isRecord(data.event) ||
-      typeof data.event.name !== "string" ||
-      (data.event.date !== null && typeof data.event.date !== "string") ||
-      (data.event.location !== null && typeof data.event.location !== "string") ||
-      (data.event.image !== null && typeof data.event.image !== "string")
-    ) {
-      throw new Error("Checkout completed, but event or registration details were not returned.");
-    }
-
-    const tickets = data.tickets.flatMap((value: unknown) => {
-      if (!isRecord(value)) return [];
-      const { id, token, attendee_name, attendee_email, ticket_type_name, amount_paid } = value;
-      const amountPaid = typeof amount_paid === "number"
-        ? amount_paid
-        : typeof amount_paid === "string"
-        ? Number(amount_paid)
-        : Number.NaN;
+    const tokens = data.tickets.flatMap((ticket: unknown) => {
       if (
-        typeof id !== "string" ||
-        typeof token !== "string" ||
-        typeof attendee_name !== "string" ||
-        typeof attendee_email !== "string" ||
-        typeof ticket_type_name !== "string" ||
-        !Number.isFinite(amountPaid)
+        typeof ticket === "object" &&
+        ticket !== null &&
+        "token" in ticket &&
+        typeof ticket.token === "string"
       ) {
-        return [];
+        return [ticket.token];
       }
-      return [{
-        id,
-        token,
-        attendeeName: attendee_name,
-        attendeeEmail: attendee_email,
-        ticketType: ticket_type_name,
-        amountPaid,
-      }];
+      return [];
     });
-    const tokens = tickets.map((ticket) => ticket.token);
 
     if (
       tokens.length !== finalAttendees.length ||
       new Set(tokens).size !== finalAttendees.length ||
-      tickets.some((ticket) =>
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ticket.token) ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ticket.id)
-      )
+      tokens.some((token) => !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token))
     ) {
       throw new Error("Ticket issuance did not return one ticket for each attendee.");
     }
 
-    const eventDate = formatTicketDate(data.event.date);
-    let nextTicketIndex = 0;
-    let emailsSent = 0;
-    let emailsFailed = 0;
-    const sendTicketEmails = async () => {
-      while (nextTicketIndex < tickets.length) {
-        const ticket = tickets[nextTicketIndex];
-        nextTicketIndex += 1;
-        try {
-          const { generateTicketPdf } = await import("@/lib/generateTicketPdf");
-          const pdf = await generateTicketPdf({
-            ticketId: ticket.id,
-            eventName: data.event.name,
-            attendeeName: ticket.attendeeName,
-            ticketType: ticket.ticketType,
-            eventDate: eventDate.date,
-            eventTime: eventDate.time,
-            venue: typeof data.event.location === "string" ? data.event.location : "Venue TBA",
-            amountPaid: ticket.amountPaid,
-            qrValue: ticket.token,
-            eventImage: typeof data.event.image === "string" ? data.event.image : undefined,
-            status: "valid",
-          } satisfies UniTixTicketProps);
-          const { data: emailData, error: emailError } = await supabase.functions.invoke(
-            "checkout-orders",
-            {
-              body: {
-                action: "send-ticket-email",
-                registration_id: data.registration_id,
-                ticket_token: ticket.token,
-                pdf,
-              },
-            },
-          );
-          if (emailError) {
-            console.error(
-              "Ticket PDF email failed:",
-              await getFunctionErrorMessage(emailError) || emailError,
-            );
-            emailsFailed += 1;
-            continue;
-          }
-
-          const delivery = isRecord(emailData) && isRecord(emailData.email_delivery)
-            ? emailData.email_delivery
-            : null;
-          if (delivery?.sent === 1) {
-            emailsSent += 1;
-          } else {
-            emailsFailed += 1;
-          }
-        } catch (emailError: unknown) {
-          console.error("Ticket PDF generation or email failed:", emailError);
-          emailsFailed += 1;
-        }
-      }
-    };
-
-    await Promise.all(
-      Array.from({ length: Math.min(3, tickets.length) }, () => sendTicketEmails()),
-    );
-
+    const emailDelivery = isRecord(data.email_delivery) ? data.email_delivery : null;
     return {
       tokens,
-      emailSent: emailsSent > 0,
-      emailFailed: emailsFailed > 0,
+      emailSent: typeof emailDelivery?.sent === "number" && emailDelivery.sent > 0,
+      emailFailed: !emailDelivery ||
+        typeof emailDelivery.failed !== "number" ||
+        emailDelivery.failed > 0,
     };
   };
 
@@ -466,10 +360,10 @@ const Checkout = () => {
         const { tokens, emailSent, emailFailed } = await createIssuedTickets(finalAttendees, null);
         setIsPaymentSuccessful(true);
         toast.success("Registration successful! Your tickets are ready.");
-        if (emailFailed) {
-          toast.warning("Your tickets are ready, but one or more ticket PDF emails could not be sent. You can download them from this page.");
-        } else if (emailSent) {
-          toast.success("Ticket PDF confirmation emails sent to the attendees.");
+        if (emailSent) {
+          toast.success(`Ticket links sent to ${contactInfo.email.trim()}.`);
+        } else if (emailFailed) {
+          toast.warning("Your tickets are ready, but the email could not be sent. You can open them now and check your contact email.");
         }
         const params = new URLSearchParams();
         tokens.forEach((token) => params.append("token", token));
@@ -522,10 +416,10 @@ const Checkout = () => {
               const { tokens, emailSent, emailFailed } = await createIssuedTickets(finalAttendees, reference);
               setIsPaymentSuccessful(true);
               toast.success("Payment verified and tickets issued.");
-              if (emailFailed) {
-                toast.warning("Your tickets are ready, but one or more ticket PDF emails could not be sent. You can download them from this page.");
-              } else if (emailSent) {
-                toast.success("Ticket PDF confirmation emails sent to the attendees.");
+              if (emailSent) {
+                toast.success(`Ticket links sent to ${contactInfo.email.trim()}.`);
+              } else if (emailFailed) {
+                toast.warning("Your tickets are ready, but the email could not be sent. You can open them now and check your contact email.");
               }
               const params = new URLSearchParams();
               tokens.forEach((token) => params.append("token", token));
