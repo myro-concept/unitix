@@ -39,6 +39,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -152,6 +156,9 @@ serve(async (req: Request) => {
 
     const quantity = validAttendees.length;
     const orderTotal = unitPrice * quantity;
+    const expectedTicketAmountKobo = Math.round(orderTotal * 100);
+    let amountPaidKobo = expectedTicketAmountKobo;
+    let paystackFeeKobo = 0;
     const paymentReference = typeof body.payment_reference === "string"
       ? body.payment_reference.trim() || null
       : null;
@@ -193,12 +200,26 @@ serve(async (req: Request) => {
         }, 402);
       }
 
+      const transactionAmount = transaction.amount;
+      const transactionFees = transaction.fees;
       if (
-        typeof transaction.amount !== "number" ||
-        transaction.amount !== Math.round(orderTotal * 100)
+        !isNonNegativeSafeInteger(transactionAmount) ||
+        transactionAmount < expectedTicketAmountKobo
       ) {
         return respond({ error: "The verified Paystack amount does not match the checkout total." }, 402);
       }
+
+      const feeWasPassedToCustomer = isNonNegativeSafeInteger(transactionFees)
+        && transactionAmount === expectedTicketAmountKobo + transactionFees;
+
+      if (
+        (transactionAmount !== expectedTicketAmountKobo && !feeWasPassedToCustomer)
+      ) {
+        return respond({ error: "The verified Paystack amount does not match the checkout total." }, 402);
+      }
+
+      amountPaidKobo = transactionAmount;
+      paystackFeeKobo = transactionAmount - expectedTicketAmountKobo;
 
       if (transaction.currency !== "NGN") {
         return respond({ error: "The verified Paystack transaction is not in NGN." }, 402);
@@ -223,6 +244,8 @@ serve(async (req: Request) => {
       Quantity: String(quantity),
       "Ticket Price": String(unitPrice),
       "Order Total": String(orderTotal),
+      "Paystack Service Fee": String(paystackFeeKobo / 100),
+      "Amount Paid": String(amountPaidKobo / 100),
       "Contact Name": contact.full_name.trim(),
       "Contact Email": contact.email.trim(),
       "Contact Phone": contact.phone.trim(),

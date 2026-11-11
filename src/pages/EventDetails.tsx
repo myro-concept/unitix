@@ -139,25 +139,6 @@ function formatMoney(value?: number | null) {
   return `₦${price.toLocaleString()}`;
 }
 
-function normalizeTicket(raw: any, eventId: string, index: number): TicketType {
-  return {
-    id: String(raw.id || `${eventId}-${index}`),
-    event_id: String(raw.event_id || eventId),
-    name:
-      raw.name ||
-      raw.ticket_name ||
-      raw.title ||
-      raw.type ||
-      "General Admission",
-    price: Number(raw.price ?? raw.ticket_price ?? raw.amount ?? 0),
-    quantity:
-      raw.quantity ??
-      raw.qty ??
-      raw.capacity ??
-      null,
-  };
-}
-
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
@@ -207,15 +188,13 @@ export default function EventDetails() {
     async function loadTicketTypes() {
       if (!event?.id) return;
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("ticket_types")
         .select("*")
         .eq("event_id", event.id);
 
       if (!error && data && data.length > 0) {
-        const tickets = data
-          .map((item: any, index: number) => normalizeTicket(item, event.id, index))
-          .sort((a: TicketType, b: TicketType) => a.price - b.price);
+        const tickets = data.sort((a, b) => a.price - b.price);
 
         setTicketTypes(tickets);
         setSelectedTicket(tickets[0]);
@@ -235,7 +214,7 @@ export default function EventDetails() {
     }
 
     loadTicketTypes();
-  }, [event?.id]);
+  }, [event?.id, event?.capacity, event?.ticket_price]);
 
   const eventDate = useMemo(
     () => formatDateTime(event?.event_date),
@@ -286,7 +265,7 @@ export default function EventDetails() {
   `Check out ${event.name} on UniTix: ${eventUrl}`
 )}`;
 
-  const maxQuantity = selectedTicket?.quantity || 99;
+  const maxQuantity = Math.max(1, selectedTicket?.quantity ?? 99);
   const eventSchema = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -901,6 +880,11 @@ export default function EventDetails() {
           background: #fff7fa;
         }
 
+        .ticket-option:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
+
         .ticket-option-inner {
           display: flex;
           align-items: center;
@@ -948,6 +932,11 @@ export default function EventDetails() {
           align-items: center;
           justify-content: center;
           cursor: pointer;
+        }
+
+        .qty-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
         }
 
         .qty-value {
@@ -1685,6 +1674,7 @@ export default function EventDetails() {
                       className={`ticket-option ${
                         selectedTicket?.id === ticket.id ? "active" : ""
                       }`}
+                      disabled={ticket.quantity === 0}
                       onClick={() => {
                         setSelectedTicket(ticket);
                         setQuantity(1);
@@ -1694,7 +1684,11 @@ export default function EventDetails() {
                         <div>
                           <p className="ticket-name">{ticket.name}</p>
                           <p className="ticket-stock">
-                            {ticket.quantity ? `${ticket.quantity} available` : "Available"}
+                            {ticket.quantity === null
+                              ? "Available"
+                              : ticket.quantity === 0
+                                ? "Sold out"
+                                : `${ticket.quantity} available`}
                           </p>
                         </div>
 
@@ -1721,6 +1715,7 @@ export default function EventDetails() {
                     <button
                       type="button"
                       className="qty-btn"
+                      disabled={selectedTicket?.quantity === 0 || quantity >= maxQuantity}
                       onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))}
                     >
                       <Plus size={16} />
@@ -1733,7 +1728,11 @@ export default function EventDetails() {
                   <strong>{activePrice > 0 ? formatMoney(total) : "Free"}</strong>
                 </div>
 
-                <Button className="buy-btn" onClick={handleBuyTicket}>
+                <Button
+                  className="buy-btn"
+                  onClick={handleBuyTicket}
+                  disabled={selectedTicket?.quantity === 0}
+                >
                   <ShoppingCart size={17} />
                   Buy ticket
                 </Button>

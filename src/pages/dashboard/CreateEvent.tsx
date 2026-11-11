@@ -30,6 +30,8 @@ import { useCreateEvent, useUpdateEvent, useOwnedEventBySlug } from "@/hooks/use
 import { useBulkInsertFormFields, useFormFields } from "@/hooks/useFormFields";
 
 type TicketType = {
+  id?: string;
+  originalQuantity?: number | null;
   name: string;
   price: string;
   quantity: string;
@@ -115,6 +117,7 @@ export default function CreateEvent() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdSlug, setCreatedSlug] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [ticketTypesLoadError, setTicketTypesLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isEditMode && existingEvent && !initialized) {
@@ -123,17 +126,6 @@ export default function CreateEvent() {
       setEventType(existingEvent.event_type || "party");
       setCapacity(existingEvent.capacity ? String(existingEvent.capacity) : "");
       setFlyerUrl(existingEvent.background_image_url || null);
-
-      if (existingEvent.ticket_price && Number(existingEvent.ticket_price) > 0) {
-        setIsPaid(true);
-        setTicketTypes([
-          {
-            name: "Regular",
-            price: String(existingEvent.ticket_price),
-            quantity: existingEvent.capacity ? String(existingEvent.capacity) : "",
-          },
-        ]);
-      }
 
       if (existingEvent.event_date) {
         const start = formatDateTimeForLagos(existingEvent.event_date);
@@ -148,7 +140,53 @@ export default function CreateEvent() {
       }
 
       setLocationAddress(existingEvent.location_value || "");
-      setInitialized(true);
+
+      let cancelled = false;
+      const loadExistingTicketTypes = async () => {
+        const { data, error } = await supabase
+          .from("ticket_types")
+          .select("id, name, price, quantity")
+          .eq("event_id", existingEvent.id);
+
+        if (cancelled) return;
+        if (error) {
+          setTicketTypesLoadError(error.message);
+          return;
+        }
+
+        if (data?.length) {
+          const loadedTickets: TicketType[] = data.map((ticket: {
+            id: string;
+            name: string;
+            price: number;
+            quantity: number | null;
+          }) => ({
+            id: ticket.id,
+            originalQuantity: ticket.quantity,
+            name: ticket.name,
+            price: String(ticket.price),
+            quantity: ticket.quantity === null ? "" : String(ticket.quantity),
+          }));
+          setTicketTypes(loadedTickets);
+          setIsPaid(loadedTickets.some((ticket) => Number(ticket.price) > 0));
+        } else {
+          const price = Number(existingEvent.ticket_price || 0);
+          setIsPaid(price > 0);
+          setTicketTypes([{
+            name: price > 0 ? "Regular" : "Free Ticket",
+            price: String(price),
+            quantity: existingEvent.capacity ? String(existingEvent.capacity) : "",
+          }]);
+        }
+
+        setInitialized(true);
+      };
+
+      void loadExistingTicketTypes();
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [isEditMode, existingEvent, initialized]);
 
@@ -209,15 +247,27 @@ export default function CreateEvent() {
     const qty = Number(ticket.quantity);
     return sum + (Number.isFinite(qty) ? qty : 0);
   }, 0);
-  const saveTicketTypes = async (eventId: string) => {
-    const ticketTypesQuery = supabase.from("ticket_types" as any);
-
-    await ticketTypesQuery.delete().eq("event_id", eventId);
-
-    const ticketsToSave = isPaid
+  const saveTicketTypes = async (eventId: string, editing = false) => {
+    const ticketTypesQuery = supabase.from("ticket_types");
+    const ticketsToSave: Array<{
+      id?: string;
+      originalQuantity?: number | null;
+      quantityChanged: boolean;
+      event_id: string;
+      name: string;
+      price: number;
+      quantity: number | null;
+    }> = isPaid
       ? ticketTypes
           .filter((ticket) => ticket.name.trim() && ticket.price)
           .map((ticket) => ({
+            id: ticket.id,
+            originalQuantity: ticket.originalQuantity,
+            quantityChanged: ticket.quantity !== (
+              ticket.originalQuantity === null || ticket.originalQuantity === undefined
+                ? ""
+                : String(ticket.originalQuantity)
+            ),
             event_id: eventId,
             name: ticket.name.trim(),
             price: Number(ticket.price),
@@ -225,17 +275,95 @@ export default function CreateEvent() {
           }))
       : [
           {
+            id: ticketTypes[0]?.id,
+            originalQuantity: ticketTypes[0]?.originalQuantity,
+            quantityChanged: ticketTypes[0]?.quantity !== (
+              ticketTypes[0]?.originalQuantity === null || ticketTypes[0]?.originalQuantity === undefined
+                ? ""
+                : String(ticketTypes[0]?.originalQuantity)
+            ),
             event_id: eventId,
             name: "Free Ticket",
             price: 0,
-            quantity: capacity ? Number(capacity) : null,
+            quantity: ticketTypes[0]?.id
+              ? ticketTypes[0].quantity ? Number(ticketTypes[0].quantity) : null
+              : capacity ? Number(capacity) : null,
           },
         ];
 
-    if (ticketsToSave.length > 0) {
-      const { error } = await ticketTypesQuery.insert(ticketsToSave);
+    if (!editing) {
+      if (ticketsToSave.length > 0) {
+        const { error } = await ticketTypesQuery.insert(
+          ticketsToSave.map(({ id: _id, originalQuantity: _original, quantityChanged: _changed, ...ticket }) => ticket)
+        );
+        if (error) throw error;
+      }
+      return;
+    }
 
+    const retainedIds = ticketsToSave.flatMap((ticket) => ticket.id ? [ticket.id] : []);
+    const removedIds = ticketTypes.flatMap((ticket) =>
+      ticket.id && !retainedIds.includes(ticket.id) ? [ticket.id] : []
+    );
+
+    if (removedIds.length > 0) {
+      const { data: registrations, error: registrationsError } = await supabase
+        .from("registrations")
+        .select("ticket_type_id")
+        .in("ticket_type_id", removedIds);
+
+      if (registrationsError) throw registrationsError;
+      if (registrations?.length) {
+        throw new Error("Ticket types with registrations cannot be removed.");
+      }
+
+      const { error } = await ticketTypesQuery
+        .delete()
+        .eq("event_id", eventId)
+        .in("id", removedIds);
       if (error) throw error;
+    }
+
+    for (const ticket of ticketsToSave) {
+      const {
+        id,
+        originalQuantity,
+        quantityChanged,
+        ...ticketData
+      } = ticket;
+
+      if (!id) {
+        const { error } = await ticketTypesQuery.insert(ticketData);
+        if (error) throw error;
+        continue;
+      }
+
+      const updateData: {
+        name: string;
+        price: number;
+        quantity?: number | null;
+      } = {
+        name: ticketData.name,
+        price: ticketData.price,
+      };
+      if (quantityChanged) updateData.quantity = ticketData.quantity;
+
+      let updateQuery = ticketTypesQuery
+        .update(updateData)
+        .eq("id", id)
+        .eq("event_id", eventId);
+
+      if (quantityChanged) {
+        updateQuery = originalQuantity === null || originalQuantity === undefined
+          ? updateQuery.is("quantity", null)
+          : updateQuery.eq("quantity", originalQuantity);
+      }
+
+      const { data, error } = await updateQuery.select("id");
+      if (error) throw error;
+      if (!data?.length) {
+        throw new Error("Ticket inventory changed while editing. Reload the page and try again.");
+      }
     }
   };
 
@@ -296,12 +424,7 @@ export default function CreateEvent() {
           toast.error("Event saved, but registration fields could not be updated. Please sync latest database migrations.");
         }
 
-        try {
-          await saveTicketTypes(existingEvent.id);
-        } catch (ticketErr: any) {
-          console.warn("Ticket types could not be saved:", ticketErr);
-          toast.error("Event saved, but ticket types could not be updated. Please sync latest database migrations.");
-        }
+        await saveTicketTypes(existingEvent.id, true);
 
         toast.success("Event updated");
         navigate(`/dashboard/events/${existingEvent.slug}`);
@@ -332,7 +455,17 @@ export default function CreateEvent() {
 
   const isPublishing = createEvent.isPending || updateEvent.isPending || bulkInsertFields.isPending;
 
-  if (isEditMode && (eventLoading || fieldsLoading)) {
+  if (isEditMode && ticketTypesLoadError) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="font-semibold text-[#111111]">Ticket types could not be loaded.</p>
+        <p className="max-w-lg text-sm text-muted-foreground">{ticketTypesLoadError}</p>
+        <Button type="button" variant="outline" onClick={() => navigate(-1)}>Go back</Button>
+      </div>
+    );
+  }
+
+  if (isEditMode && (eventLoading || fieldsLoading || !initialized)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-[#FF0048]" />
@@ -643,7 +776,7 @@ export default function CreateEvent() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Quantity</Label>
+                            <Label>Available quantity</Label>
                             <Input
                               type="number"
                               min="1"

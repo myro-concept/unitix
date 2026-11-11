@@ -1,5 +1,6 @@
 
 import { QRCodeSVG } from "qrcode.react";
+import { Logo } from "@/components/Logo";
 
 type UniTixTicketProps = {
   ticketId: string;
@@ -43,7 +44,7 @@ export default function UniTixTicket({
   }[status];
   const compactTicketId = ticketId.replace(/-/g, "");
   const ticketNumber = /^[0-9a-f]{32}$/i.test(compactTicketId)
-    ? `UT-${BigInt(`0x${compactTicketId}`).toString(36).toUpperCase()}`
+    ? `UT-${BigInt(`0x${compactTicketId}`).toString(36).toUpperCase().slice(-16)}`
     : ticketId;
 
   return (
@@ -84,10 +85,8 @@ export default function UniTixTicket({
             </div>
           )}
 
-          <div className="absolute left-4 top-4 rounded-full bg-white px-3 py-1.5">
-            <span className="text-sm font-extrabold tracking-tight text-[#ff0048]">
-              ◉ UniTix
-            </span>
+          <div className="absolute left-4 top-4 flex items-center justify-center rounded-full bg-white px-3 py-1.5">
+            <Logo size="xs" textColor="#111111" />
           </div>
         </header>
 
@@ -175,7 +174,7 @@ export default function UniTixTicket({
             text-sm font-bold text-white transition hover:bg-[#df003e]
             disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Download / Print Ticket
+            Download ticket
           </button>
         </section>
 
@@ -188,9 +187,7 @@ export default function UniTixTicket({
             Keep your ticket safe and arrive on time.
           </p>
           <div className="mt-4 border-t border-gray-200 pt-4">
-            <p className="text-sm font-extrabold text-[#ff0048]">
-              ◉ UniTix
-            </p>
+            <Logo size="xs" textColor="#111111" className="mx-auto" />
             <p className="mt-1 text-xs text-gray-500">
               Your access, simplified.
             </p>

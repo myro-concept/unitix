@@ -355,6 +355,41 @@ export type Database = {
           },
         ]
       }
+      ticket_types: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          name: string
+          price: number
+          quantity: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          name: string
+          price?: number
+          quantity?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          name?: string
+          price?: number
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_types_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
