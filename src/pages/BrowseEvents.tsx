@@ -6,7 +6,9 @@ import {
   ArrowRight,
   Bookmark,
   CalendarDays,
+  ChevronLeft,
   ChevronDown,
+  ChevronRight,
   Instagram,
   MapPin,
   Menu,
@@ -60,8 +62,23 @@ type EventCardItem = {
   likes: number;
 };
 
-const INITIAL_VISIBLE_EVENTS = 9;
-const LOAD_MORE_STEP = 9;
+const EVENTS_PER_PAGE = 12;
+
+function getPaginationItems(currentPage: number, pageCount: number): Array<number | "ellipsis"> {
+  if (pageCount <= 7) {
+    return Array.from({ length: pageCount }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, "ellipsis", pageCount];
+  }
+
+  if (currentPage >= pageCount - 3) {
+    return [1, "ellipsis", pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+  }
+
+  return [1, "ellipsis", currentPage - 1, currentPage, currentPage + 1, "ellipsis", pageCount];
+}
 
 const footerLinks = {
   Platform: [
@@ -247,18 +264,17 @@ export default function Events() {
   const [searchParams] = useSearchParams();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(() => searchParams.get("campus") || "All Schools");
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") || "All categories");
   const [fromDate, setFromDate] = useState(() => searchParams.get("date") || "");
   const [toDate, setToDate] = useState(() => searchParams.get("date") || "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [mobileFilterView, setMobileFilterView] = useState<"all" | "campus" | "dates">("all");
-  const [openMobileSection, setOpenMobileSection] = useState<"campus" | "dates" | "results" | null>("campus");
+  const [mobileFilterView, setMobileFilterView] = useState<"all" | "campus" | "category" | "dates">("all");
+  const [openMobileSection, setOpenMobileSection] = useState<"campus" | "category" | "dates" | null>("campus");
   const [campusSearch, setCampusSearch] = useState("");
-  const [resultsPerFetch, setResultsPerFetch] = useState(12);
   const [search, setSearch] = useState(() => searchParams.get("q") || "");
   const [liveEvents, setLiveEvents] = useState<EventCardItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleEventsCount, setVisibleEventsCount] = useState(12);
-  const [loadMoreMessage, setLoadMoreMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let mounted = true;
@@ -325,38 +341,46 @@ export default function Events() {
     const matchesSchool =
       selectedSchool === "All Schools" ||
       event.school.toLowerCase().includes(selectedSchool.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "All categories" ||
+      event.category.toLowerCase() === selectedCategory.toLowerCase();
 
     const matchesFromDate = !fromDate || event.eventDateKey >= fromDate;
     const matchesToDate = !toDate || event.eventDateKey <= toDate;
 
-    return matchesSearch && matchesSchool && matchesFromDate && matchesToDate;
-  }), [allEvents, search, fromDate, selectedSchool, toDate]);
+    return matchesSearch && matchesSchool && matchesCategory && matchesFromDate && matchesToDate;
+  }), [allEvents, search, fromDate, selectedSchool, selectedCategory, toDate]);
 
   useEffect(() => {
-    setVisibleEventsCount(resultsPerFetch);
-    setLoadMoreMessage("");
-  }, [search, selectedSchool, fromDate, resultsPerFetch, toDate]);
+    setCurrentPage(1);
+  }, [search, selectedSchool, selectedCategory, fromDate, toDate]);
 
-  const visibleEvents = useMemo(
-    () => filteredEvents.slice(0, visibleEventsCount),
-    [filteredEvents, visibleEventsCount],
-  );
-
-  const hasMoreEvents = visibleEventsCount < filteredEvents.length;
+  const pageCount = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
+  const visibleEvents = useMemo(() => {
+    const start = (currentPage - 1) * EVENTS_PER_PAGE;
+    return filteredEvents.slice(start, start + EVENTS_PER_PAGE);
+  }, [filteredEvents, currentPage]);
+  const paginationItems = getPaginationItems(currentPage, pageCount);
 
   const visibleCampuses = useMemo(() => {
     const q = campusSearch.toLowerCase().trim();
     return CAMPUS_OPTIONS.filter((campus) => campus.toLowerCase().includes(q));
   }, [campusSearch]);
+  const categories = useMemo(
+    () => [...new Set(allEvents.map((event) => event.category.trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b)),
+    [allEvents],
+  );
 
-  const handleLoadMore = () => {
-    if (hasMoreEvents) {
-      setVisibleEventsCount((current) => current + resultsPerFetch);
-      setLoadMoreMessage("");
-      return;
-    }
+  const goToPage = (page: number) => {
+    const nextPage = Math.min(Math.max(page, 1), pageCount);
+    if (nextPage === currentPage) return;
+    setCurrentPage(nextPage);
 
-    setLoadMoreMessage("No more event.");
+    window.requestAnimationFrame(() => {
+      const top = document.querySelector(".events-main")?.getBoundingClientRect().top ?? 0;
+      window.scrollTo({ top: window.scrollY + top, behavior: "smooth" });
+    });
   };
 
   const closeMobile = () => setMobileOpen(false);
@@ -599,14 +623,31 @@ export default function Events() {
 
         .filter-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.2fr) minmax(280px, 1fr) minmax(280px, 1fr) auto;
-          gap: 16px;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr) auto;
+          gap: 12px;
           align-items: end;
           margin-top: 18px;
         }
 
         .filter-field {
           min-width: 0;
+        }
+
+        .filter-date-range {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .filter-date-range .filter-date {
+          min-width: 0;
+          flex: 1;
+          padding: 0 10px;
+        }
+
+        .filter-date-range-separator {
+          color: #64748b;
+          font-size: 13px;
         }
 
         .filter-label {
@@ -666,6 +707,24 @@ export default function Events() {
 
         .filter-reset:hover {
           background: #0b1020;
+        }
+
+        @media (max-width: 1100px) {
+          .desktop-filter-grid {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
+            gap: 8px;
+          }
+
+          .desktop-filter-grid .filter-reset {
+            width: auto;
+            padding: 0 16px;
+          }
+
+          .desktop-filter-grid .filter-control,
+          .desktop-filter-grid .filter-reset {
+            height: 52px;
+            font-size: 14px;
+          }
         }
 
         .mobile-filter-toolbar {
@@ -907,29 +966,6 @@ export default function Events() {
           display: inline-flex;
         }
 
-        .results-per-fetch-options {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 8px;
-        }
-
-        .results-per-fetch-option {
-          height: 42px;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          background: #ffffff;
-          color: #111827;
-          font-size: 15px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-
-        .results-per-fetch-option.active {
-          background: #111827;
-          border-color: #111827;
-          color: #ffffff;
-        }
-
         .mobile-filter-actions {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -1062,41 +1098,69 @@ export default function Events() {
             gap: 22px;
         }
 
-        .load-more-wrap {
-          margin-top: 30px;
+        .events-pagination {
+          margin-top: 28px;
+          padding-top: 24px;
           display: flex;
-          flex-direction: column;
-          justify-content: center;
           align-items: center;
-          gap: 8px;
+          justify-content: space-between;
+          gap: 20px;
+          border-top: 1px solid #d6d3f0;
         }
 
-        .load-more-btn {
-          border: none;
-          border-radius: 14px;
-          background: #ff0048;
-          color: #ffffff;
+        .pagination-summary {
+          color: #475569;
           font-size: 14px;
-          font-weight: 900;
-          padding: 13px 20px;
+          white-space: nowrap;
+        }
+
+        .pagination-controls {
           display: inline-flex;
           align-items: center;
+          justify-content: flex-end;
           gap: 8px;
+        }
+
+        .pagination-button {
+          min-width: 44px;
+          height: 44px;
+          padding: 0 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          border: 1px solid #d6d3f0;
+          border-radius: 999px;
+          background: #ffffff;
+          color: #475569;
+          font: inherit;
+          font-size: 14px;
           cursor: pointer;
-          box-shadow: 0 8px 18px rgba(255, 0, 72, 0.18);
-          transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+          transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
         }
 
-        .load-more-btn:hover {
-          transform: translateY(-1px);
-          background: #e60041;
-          box-shadow: 0 10px 22px rgba(255, 0, 72, 0.22);
-        }
-
-        .load-more-note {
-          font-size: 13px;
+        .pagination-button:hover:not(:disabled):not(.active) {
+          border-color: #ff0048;
           color: #ff0048;
-          font-weight: 700;
+        }
+
+        .pagination-button.active {
+          border-color: #ff0048;
+          background: #ff0048;
+          color: #ffffff;
+          font-weight: 800;
+        }
+
+        .pagination-button:disabled {
+          color: #cbd5e1;
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+
+        .pagination-ellipsis {
+          width: 24px;
+          color: #64748b;
+          text-align: center;
         }
 
         .event-card {
@@ -1107,6 +1171,7 @@ export default function Events() {
             border: 1px solid #e5e7eb;
             border-radius: 26px;
             overflow: hidden;
+            box-shadow: 0 12px 26px rgba(17, 17, 17, 0.1);
             transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
@@ -1487,6 +1552,10 @@ export default function Events() {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .pagination-controls {
+              gap: 6px;
+            }
+
             .footer-grid {
             grid-template-columns: 1fr 1fr;
             }
@@ -1583,6 +1652,38 @@ export default function Events() {
 
             .events-grid {
             grid-template-columns: 1fr;
+            }
+
+            .events-pagination {
+              align-items: flex-start;
+              flex-direction: column;
+              gap: 14px;
+            }
+
+            .pagination-controls {
+              width: 100%;
+              justify-content: flex-start;
+              gap: 6px;
+              flex-wrap: wrap;
+            }
+
+            .pagination-button {
+              min-width: 40px;
+              height: 40px;
+              padding: 0 10px;
+            }
+
+            .pagination-button.previous,
+            .pagination-button.next {
+              min-width: 42px;
+              font-size: 0;
+              gap: 0;
+            }
+
+            .pagination-button.previous svg,
+            .pagination-button.next svg {
+              width: 18px;
+              height: 18px;
             }
 
             .event-img-wrap {
@@ -1691,6 +1792,19 @@ export default function Events() {
                 type="button"
                 className="mobile-filter-chip"
                 onClick={() => {
+                  setMobileFilterView("category");
+                  setOpenMobileSection("category");
+                  setMobileFiltersOpen(true);
+                }}
+              >
+                {selectedCategory === "All categories" ? "Category" : selectedCategory}
+                <ChevronDown size={14} className="mobile-filter-chevron" />
+              </button>
+
+              <button
+                type="button"
+                className="mobile-filter-chip"
+                onClick={() => {
                   setMobileFilterView("dates");
                   setOpenMobileSection("dates");
                   setMobileFiltersOpen(true);
@@ -1712,6 +1826,8 @@ export default function Events() {
                     <h2>
                       {mobileFilterView === "campus"
                         ? "Select campus"
+                        : mobileFilterView === "category"
+                          ? "Select category"
                         : mobileFilterView === "dates"
                           ? "Select dates"
                           : "Filters"}
@@ -1811,6 +1927,57 @@ export default function Events() {
                     <button
                       type="button"
                       className="filter-accordion-title"
+                      onClick={() => setOpenMobileSection((current) => (current === "category" ? null : "category"))}
+                    >
+                      <span>Category</span>
+                      <ChevronDown
+                        size={14}
+                        className={openMobileSection === "category" ? "filter-accordion-chevron open" : "filter-accordion-chevron"}
+                      />
+                    </button>
+                    {openMobileSection === "category" && (
+                    <div className="filter-accordion-body">
+                      <select
+                        className="filter-control filter-select"
+                        value={selectedCategory}
+                        onChange={(event) => setSelectedCategory(event.target.value)}
+                        aria-label="Filter by category"
+                      >
+                        <option value="All categories">All categories</option>
+                        {categories.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                    )}
+                  </div>
+                  )}
+
+                  {mobileFilterView === "category" && (
+                  <div className="filter-accordion-card">
+                    <div className="filter-accordion-body">
+                      <label className="filter-label" htmlFor="category-filter-mobile">Category</label>
+                      <select
+                        id="category-filter-mobile"
+                        className="filter-control filter-select"
+                        value={selectedCategory}
+                        onChange={(event) => setSelectedCategory(event.target.value)}
+                        aria-label="Filter by category"
+                      >
+                        <option value="All categories">All categories</option>
+                        {categories.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  )}
+
+                  {mobileFilterView === "all" && (
+                  <div className="filter-accordion-card">
+                    <button
+                      type="button"
+                      className="filter-accordion-title"
                       onClick={() => setOpenMobileSection((current) => (current === "dates" ? null : "dates"))}
                     >
                       <span>Dates</span>
@@ -1893,39 +2060,6 @@ export default function Events() {
                   )}
 
                   {mobileFilterView === "all" && (
-                  <div className="filter-accordion-card">
-                    <button
-                      type="button"
-                      className="filter-accordion-title"
-                      onClick={() => setOpenMobileSection((current) => (current === "results" ? null : "results"))}
-                    >
-                      <span>Results per fetch</span>
-                      <ChevronDown
-                        size={14}
-                        className={openMobileSection === "results" ? "filter-accordion-chevron open" : "filter-accordion-chevron"}
-                      />
-                    </button>
-                    {openMobileSection === "results" && (
-                    <div className="filter-accordion-body">
-                      <div className="results-per-fetch-options" role="radiogroup" aria-label="Results per fetch">
-                        {[12, 24, 36].map((count) => (
-                          <button
-                            key={count}
-                            type="button"
-                            className={resultsPerFetch === count ? "results-per-fetch-option active" : "results-per-fetch-option"}
-                            onClick={() => setResultsPerFetch(count)}
-                            aria-pressed={resultsPerFetch === count}
-                          >
-                            {count}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    )}
-                  </div>
-                  )}
-
-                  {mobileFilterView === "all" && (
                   <div className="mobile-filter-actions">
                     <button
                       type="button"
@@ -1933,10 +2067,10 @@ export default function Events() {
                       onClick={() => {
                         setSearch("");
                         setSelectedSchool("All Schools");
+                        setSelectedCategory("All categories");
                         setCampusSearch("");
                         setFromDate("");
                         setToDate("");
-                        setResultsPerFetch(12);
                       }}
                     >
                       Reset all
@@ -1988,27 +2122,42 @@ export default function Events() {
               </div>
 
               <div className="filter-field">
-                <label className="filter-label" htmlFor="from-date-desktop">From</label>
-                <input
-                  id="from-date-desktop"
-                  type="date"
-                  className="filter-control filter-date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  aria-label="From date"
-                />
+                <label className="filter-label" htmlFor="from-date-desktop">Date</label>
+                <div className="filter-date-range">
+                  <input
+                    id="from-date-desktop"
+                    type="date"
+                    className="filter-control filter-date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    aria-label="Start date"
+                  />
+                  <span className="filter-date-range-separator" aria-hidden="true">to</span>
+                  <input
+                    id="to-date-desktop"
+                    type="date"
+                    className="filter-control filter-date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    aria-label="End date"
+                  />
+                </div>
               </div>
 
               <div className="filter-field">
-                <label className="filter-label" htmlFor="to-date-desktop">To</label>
-                <input
-                  id="to-date-desktop"
-                  type="date"
-                  className="filter-control filter-date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  aria-label="To date"
-                />
+                <label className="filter-label" htmlFor="category-filter-desktop">Category</label>
+                <select
+                  id="category-filter-desktop"
+                  className="filter-control filter-select"
+                  value={selectedCategory}
+                  onChange={(event) => setSelectedCategory(event.target.value)}
+                  aria-label="Filter by category"
+                >
+                  <option value="All categories">All categories</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
               </div>
 
               <button
@@ -2017,6 +2166,7 @@ export default function Events() {
                 onClick={() => {
                   setSearch("");
                   setSelectedSchool("All Schools");
+                  setSelectedCategory("All categories");
                   setFromDate("");
                   setToDate("");
                 }}
@@ -2049,7 +2199,7 @@ export default function Events() {
 
             <div className="events-grid">
               {loading ? (
-                Array.from({ length: 6 }).map((_, index) => (
+                Array.from({ length: EVENTS_PER_PAGE }).map((_, index) => (
                   <div key={index} className="event-card skeleton-card">
                     <div className="skeleton-img" />
                     <div className="event-body">
@@ -2073,12 +2223,47 @@ export default function Events() {
             </div>
 
             {!loading && filteredEvents.length > 0 && (
-              <div className="load-more-wrap">
-                <button type="button" className="load-more-btn" onClick={handleLoadMore}>
-                  Load more events <ArrowRight size={16} />
-                </button>
-                {loadMoreMessage && <p className="load-more-note">{loadMoreMessage}</p>}
-              </div>
+              <nav className="events-pagination" aria-label="Events pagination">
+                <p className="pagination-summary">
+                  Page <strong>{currentPage}</strong> of <strong>{pageCount}</strong>
+                </p>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    className="pagination-button previous"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1 || pageCount <= 1}
+                    aria-label="Go to previous page"
+                  >
+                    <ChevronLeft size={16} />
+                    <span>Previous</span>
+                  </button>
+                  {paginationItems.map((item, index) => item === "ellipsis" ? (
+                    <span key={`ellipsis-${index}`} className="pagination-ellipsis" aria-hidden="true">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      className={item === currentPage ? "pagination-button active" : "pagination-button"}
+                      onClick={() => goToPage(item)}
+                      aria-label={`Go to page ${item}`}
+                      aria-current={item === currentPage ? "page" : undefined}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="pagination-button next"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === pageCount || pageCount <= 1}
+                    aria-label="Go to next page"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </nav>
             )}
 
           </div>
