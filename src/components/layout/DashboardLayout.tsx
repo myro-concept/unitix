@@ -15,6 +15,7 @@ import {
 
 const navItems = [
   { title: "Events", url: "/dashboard/events" },
+  { title: "Check-in", url: "/dashboard/check-in" },
   { title: "Attendees", url: "/dashboard/attendees" },
   { title: "Analytics", url: "/dashboard/analytics" },
   { title: "Wallet", url: "/dashboard/wallet" },
@@ -97,13 +98,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <Logo size="sm" />
         </Link>
 
-        <div className="hidden md:flex flex-1 items-center h-full overflow-x-auto">
-          <div className="flex items-center gap-1">
+        <div className="hidden min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex">
+          <div className="flex w-max items-center gap-1">
             {dashboardNavItems.map((item) => (
               <NavLink
                 key={item.url}
                 to={item.url}
-                className="px-4 py-2 text-sm font-semibold text-[#6b7280] rounded-full transition-colors hover:text-[#111111] hover:bg-white"
+                className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold text-[#6b7280] transition-colors hover:bg-white hover:text-[#111111]"
                 activeClassName="bg-[#111111] text-white hover:bg-[#111111] hover:text-white"
               >
                 {item.title}
@@ -112,9 +113,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-3 shrink-0">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           {user && (
-            <span className="text-xs text-[#6b7280] hidden lg:block truncate max-w-[180px]">
+          <span className="hidden max-w-[180px] truncate text-xs text-[#6b7280] xl:block">
               {user.email}
             </span>
           )}

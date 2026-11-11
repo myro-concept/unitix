@@ -8,6 +8,7 @@ import UniTixTicket from "@/pages/UniTixTicket";
 interface TicketDetails {
   id: string;
   token: string;
+  ticketCode: string;
   attendeeName: string;
   ticketType: string;
   amountPaid: number;
@@ -31,6 +32,7 @@ function mapTickets(value: Json): TicketDetails[] {
     const {
       id,
       token,
+      ticket_code,
       attendee_name,
       ticket_type_name,
       amount_paid,
@@ -44,6 +46,7 @@ function mapTickets(value: Json): TicketDetails[] {
     if (
       typeof id !== "string" ||
       typeof token !== "string" ||
+      typeof ticket_code !== "string" ||
       typeof attendee_name !== "string" ||
       typeof ticket_type_name !== "string" ||
       typeof event_name !== "string" ||
@@ -64,6 +67,7 @@ function mapTickets(value: Json): TicketDetails[] {
     return {
       id,
       token,
+      ticketCode: ticket_code,
       attendeeName: attendee_name,
       ticketType: ticket_type_name,
       amountPaid: parsedAmount,
@@ -171,7 +175,7 @@ export default function TicketCollection() {
                   return (
                     <UniTixTicket
                       key={ticket.id}
-                      ticketId={ticket.id}
+                      ticketId={ticket.ticketCode}
                       eventName={ticket.eventName}
                       attendeeName={ticket.attendeeName}
                       ticketType={ticket.ticketType}

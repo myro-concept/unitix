@@ -42,10 +42,7 @@ export default function UniTixTicket({
     used: "Already used",
     cancelled: "Cancelled",
   }[status];
-  const compactTicketId = ticketId.replace(/-/g, "");
-  const ticketNumber = /^[0-9a-f]{32}$/i.test(compactTicketId)
-    ? `UT-${BigInt(`0x${compactTicketId}`).toString(36).toUpperCase().slice(-16)}`
-    : ticketId;
+  const ticketNumber = ticketId;
 
   return (
     <div className="unitix-ticket-page min-h-screen bg-[#f0f0f0] px-3 py-6 sm:px-5">

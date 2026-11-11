@@ -16,6 +16,7 @@ import Contact from "./pages/Contact";
 import CreateEvent from "./pages/dashboard/CreateEvent";
 import EventDetail from "./pages/dashboard/EventDetail";
 import Attendees from "./pages/dashboard/Attendees";
+import TicketCheckIn from "./pages/dashboard/TicketCheckIn";
 import Analytics from "./pages/dashboard/Analytics";
 import Integrations from "./pages/dashboard/Integrations";
 import WalletPage from "./pages/dashboard/Wallet";
@@ -81,6 +82,7 @@ const App = () => (
                       <Route path="events/:slug" element={<EventDetail />} />
                       <Route path="events/:slug/edit" element={<CreateEvent />} />
                       <Route path="attendees" element={<Attendees />} />
+                      <Route path="check-in" element={<TicketCheckIn />} />
                       <Route path="analytics" element={<Analytics />} />
                       <Route path="wallet" element={<WalletPage />} />
                       <Route path="integrations" element={<Integrations />} />

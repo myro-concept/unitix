@@ -263,6 +263,7 @@ export type Database = {
           id: string
           registration_id: string
           status: string
+          ticket_code: string
           ticket_type_id: string | null
           ticket_type_name: string
           token: string
@@ -278,6 +279,7 @@ export type Database = {
           id?: string
           registration_id: string
           status?: string
+          ticket_code?: string
           ticket_type_id?: string | null
           ticket_type_name: string
           token?: string
@@ -293,6 +295,7 @@ export type Database = {
           id?: string
           registration_id?: string
           status?: string
+          ticket_code?: string
           ticket_type_id?: string | null
           ticket_type_name?: string
           token?: string
@@ -390,6 +393,48 @@ export type Database = {
           },
         ]
       }
+      ticket_checkin_logs: {
+        Row: {
+          event_id: string
+          id: string
+          issued_ticket_id: string | null
+          result: string
+          scanned_at: string
+          scanner_id: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          issued_ticket_id?: string | null
+          result: string
+          scanned_at?: string
+          scanner_id: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          issued_ticket_id?: string | null
+          result?: string
+          scanned_at?: string
+          scanner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_checkin_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_checkin_logs_issued_ticket_id_fkey"
+            columns: ["issued_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "issued_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -423,6 +468,14 @@ export type Database = {
       }
       check_in_ticket: {
         Args: { p_event_id: string; p_token: string }
+        Returns: Json
+      }
+      check_in_ticket_by_code: {
+        Args: { p_event_id: string; p_ticket_code: string }
+        Returns: Json
+      }
+      record_invalid_ticket_scan: {
+        Args: { p_event_id: string }
         Returns: Json
       }
       complete_ticket_checkout: {

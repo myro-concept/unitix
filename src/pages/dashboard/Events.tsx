@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search, CalendarDays, Users, Loader2, MapPin, ExternalLink, LayoutGrid, List } from "lucide-react";
+import { Plus, Search, CalendarDays, Users, Loader2, MapPin, ExternalLink, LayoutGrid, List, ScanQrCode } from "lucide-react";
 import { useEvents } from "@/hooks/useEvents";
 import { useRegistrations } from "@/hooks/useRegistrations";
 import { format } from "date-fns";
@@ -106,11 +106,18 @@ const Events = () => {
           <h1 className="text-3xl font-display font-bold">Events</h1>
           <p className="text-muted-foreground">Create and manage your event registration pages.</p>
         </div>
-        <Button className="w-full sm:w-auto" asChild>
-          <Link to="/dashboard/events/create">
-            <Plus className="w-4 h-4 mr-2" /> Create event
-          </Link>
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button variant="outline" className="w-full sm:w-auto" asChild>
+            <Link to="/dashboard/check-in">
+              <ScanQrCode className="w-4 h-4 mr-2" /> Scan tickets
+            </Link>
+          </Button>
+          <Button className="w-full sm:w-auto" asChild>
+            <Link to="/dashboard/events/create">
+              <Plus className="w-4 h-4 mr-2" /> Create event
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Upcoming Events Row */}
