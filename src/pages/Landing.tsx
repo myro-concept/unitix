@@ -1081,6 +1081,15 @@ export default function Landing() {
           box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
         }
 
+        .hero-stage::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          background: linear-gradient(rgba(18, 12, 19, 0.66), rgba(18, 12, 19, 0.8));
+          pointer-events: none;
+        }
+
         .hero-center {
           text-align: center;
           width: 100%;
@@ -1360,6 +1369,11 @@ export default function Landing() {
           scroll-snap-align: start;
         }
 
+        .featured-events-grid > .event-card {
+          flex: 0 0 clamp(260px, 30vw, 360px);
+          scroll-snap-align: start;
+        }
+
         .events-grid > .empty-state {
           flex: 1 0 100%;
         }
@@ -1370,7 +1384,7 @@ export default function Landing() {
 
         .featured-events-grid {
           display: flex;
-          gap: 18px;
+          gap: 22px;
           overflow-x: auto;
           overscroll-behavior-x: contain;
           scroll-behavior: smooth;
@@ -1382,15 +1396,6 @@ export default function Landing() {
 
         .featured-events-grid::-webkit-scrollbar {
           display: none;
-        }
-
-        .featured-events-grid > .event-card {
-          flex: 0 0 clamp(260px, 30vw, 360px);
-          scroll-snap-align: start;
-        }
-
-        .featured-events-grid .event-img-wrap {
-          height: 190px;
         }
 
         .view-more-events {
@@ -2509,12 +2514,6 @@ export default function Landing() {
           gap: 20px;
         }
 
-        @media (max-width: 1100px) {
-          .featured-events-grid > .event-card {
-            flex-basis: min(42vw, 340px);
-          }
-        }
-
         @media (max-width: 900px) {
           .nav-links,
           .nav-actions {
@@ -2526,8 +2525,13 @@ export default function Landing() {
             gap: 18px;
           }
 
-          .events-grid > .event-card {
+          .events-grid > .event-card,
+          .featured-events-grid > .event-card {
             flex-basis: min(42vw, 340px);
+          }
+
+          .featured-events-grid {
+            gap: 18px;
           }
 
           .mobile-menu-button {
@@ -2671,6 +2675,11 @@ export default function Landing() {
             min-height: 440px;
             padding: 40px 18px;
             border-radius: 18px;
+            background-position: center 42%;
+          }
+
+          .hero-stage::before {
+            background: linear-gradient(rgba(18, 12, 19, 0.4), rgba(18, 12, 19, 0.58));
           }
 
           .hero-search {
@@ -2722,7 +2731,8 @@ export default function Landing() {
             padding-right: 20px;
           }
 
-          .events-grid > .event-card {
+          .events-grid > .event-card,
+          .featured-events-grid > .event-card {
             flex-basis: 84%;
           }
 
@@ -2730,14 +2740,6 @@ export default function Landing() {
             gap: 16px;
             margin-right: -20px;
             padding-right: 20px;
-          }
-
-          .featured-events-grid > .event-card {
-            flex-basis: 84%;
-          }
-
-          .featured-events-grid .event-img-wrap {
-            height: 145px;
           }
 
           .event-img-wrap {
@@ -2858,7 +2860,7 @@ export default function Landing() {
 
       <section className="hero">
         <div className="hero-shell">
-          <div className="hero-stage" style={{ backgroundImage: `linear-gradient(rgba(18, 12, 19, 0.66), rgba(18, 12, 19, 0.8)), url("${heroBackground}")` }}>
+          <div className="hero-stage" style={{ backgroundImage: `url("${heroBackground}")` }}>
             <motion.div
               className="hero-center"
               initial={{ opacity: 0, y: 24 }}
