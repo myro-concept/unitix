@@ -20,6 +20,7 @@ import Analytics from "./pages/dashboard/Analytics";
 import Integrations from "./pages/dashboard/Integrations";
 import WalletPage from "./pages/dashboard/Wallet";
 import SettingsPage from "./pages/dashboard/SettingsPage";
+import FeaturedEvents from "./pages/dashboard/FeaturedEvents";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -75,6 +76,7 @@ const App = () => (
                   <DashboardLayout>
                     <Routes>
                       <Route path="events" element={<Events />} />
+                      <Route path="featured-events" element={<FeaturedEvents />} />
                       <Route path="events/create" element={<CreateEvent />} />
                       <Route path="events/:slug" element={<EventDetail />} />
                       <Route path="events/:slug/edit" element={<CreateEvent />} />

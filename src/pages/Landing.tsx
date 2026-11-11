@@ -655,9 +655,14 @@ export default function Landing() {
   const [eventDate, setEventDate] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liveEvents, setLiveEvents] = useState<LandingEvent[]>([]);
+  const [featuredEvents, setFeaturedEvents] = useState<LandingEvent[]>([]);
+  const [featuredEventIds, setFeaturedEventIds] = useState<string[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loadingFeaturedEvents, setLoadingFeaturedEvents] = useState(true);
   const eventsTrackRef = useRef<HTMLDivElement>(null);
+  const featuredEventsTrackRef = useRef<HTMLDivElement>(null);
   const [eventScrollState, setEventScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
+  const [featuredScrollState, setFeaturedScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -673,22 +678,54 @@ export default function Landing() {
     async function loadEvents() {
       setLoadingEvents(true);
 
-      const { data: eventsData, error: eventsError } = await supabase
-        .from("events")
-        .select("id, slug, name, event_date, event_type, location_value, ticket_price, background_image_url, status, user_id")
-        .eq("status", "live")
-        .order("event_date", { ascending: true })
-        .limit(6);
+      const [eventsResult, featuredSlotsResult] = await Promise.all([
+        supabase
+          .from("events")
+          .select("id, slug, name, event_date, event_type, location_value, ticket_price, background_image_url, status, user_id")
+          .eq("status", "live")
+          .order("event_date", { ascending: true })
+          .limit(6),
+        supabase.from("featured_events").select("slot, event_id").order("slot"),
+      ]);
 
       if (!mounted) return;
 
-      if (eventsError) {
+      if (eventsResult.error) {
+        console.error("Failed to load landing page events:", eventsResult.error);
         setLiveEvents([]);
         setLoadingEvents(false);
-        return;
+      } else {
+        setLoadingEvents(false);
       }
 
-      const userIds = [...new Set((eventsData || []).map((event) => event.user_id).filter(Boolean))];
+      if (featuredSlotsResult.error) {
+        console.error("Failed to load featured event slots:", featuredSlotsResult.error);
+        setFeaturedEvents([]);
+        setFeaturedEventIds([]);
+        setLoadingFeaturedEvents(false);
+      }
+
+      const featuredSlots = featuredSlotsResult.data || [];
+      const featuredIds = featuredSlots.map((slot) => slot.event_id);
+      const featuredEventsResult = !featuredSlotsResult.error && featuredIds.length > 0
+        ? await supabase
+          .from("events")
+          .select("id, slug, name, event_date, event_type, location_value, ticket_price, background_image_url, status, user_id")
+          .in("id", featuredIds)
+          .eq("status", "live")
+        : null;
+
+      if (!mounted) return;
+
+      if (featuredEventsResult?.error) {
+        console.error("Failed to load featured live events:", featuredEventsResult.error);
+        setFeaturedEvents([]);
+        setFeaturedEventIds([]);
+      }
+
+      const eventsData = eventsResult.data || [];
+      const featuredEventsData = featuredEventsResult?.data || [];
+      const userIds = [...new Set([...eventsData, ...featuredEventsData].map((event) => event.user_id).filter(Boolean))];
 
       const { data: profilesData } = await supabase
         .from("profiles")
@@ -699,7 +736,7 @@ export default function Landing() {
         (profilesData || []).map((profile) => [profile.id, profile])
       );
 
-      const mappedEvents = (eventsData || []).map((event) => {
+      const mappedEvents = eventsData.map((event) => {
         const profile = event.user_id ? profilesMap.get(event.user_id) : null;
         return mapLiveEvent({
           ...event,
@@ -708,7 +745,16 @@ export default function Landing() {
       });
 
       setLiveEvents(mappedEvents);
-      setLoadingEvents(false);
+      const featuredEventsById = new Map(featuredEventsData.map((event) => {
+        const profile = event.user_id ? profilesMap.get(event.user_id) : null;
+        return [event.id, mapLiveEvent({ ...event, profiles: profile || null })];
+      }));
+      const mappedFeaturedEvents = featuredSlots
+        .map((slot) => featuredEventsById.get(slot.event_id))
+        .filter((event): event is LandingEvent => Boolean(event));
+      setFeaturedEvents(mappedFeaturedEvents);
+      setFeaturedEventIds(mappedFeaturedEvents.map((event) => event.id));
+      setLoadingFeaturedEvents(false);
     }
 
     loadEvents();
@@ -730,7 +776,7 @@ export default function Landing() {
       activeCampus === "All Schools" ||
       event.school.toLowerCase().includes(activeCampus.toLowerCase());
     const matchesDate = !eventDate || event.eventDateKey === eventDate;
-    return matchesSearch && matchesCampus && matchesDate;
+    return matchesSearch && matchesCampus && matchesDate && !featuredEventIds.includes(event.id);
   });
 
   useEffect(() => {
@@ -754,6 +800,29 @@ export default function Landing() {
 
   const scrollEvents = (direction: -1 | 1) => {
     const track = eventsTrackRef.current;
+    if (!track) return;
+    track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const track = featuredEventsTrackRef.current;
+    if (!track) return;
+
+    const updateScrollState = () => {
+      setFeaturedScrollState({
+        canScrollLeft: track.scrollLeft > 1,
+        canScrollRight: track.scrollLeft + track.clientWidth < track.scrollWidth - 1,
+      });
+    };
+
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+
+    return () => window.removeEventListener("resize", updateScrollState);
+  }, [loadingFeaturedEvents, featuredEvents.length]);
+
+  const scrollFeaturedEvents = (direction: -1 | 1) => {
+    const track = featuredEventsTrackRef.current;
     if (!track) return;
     track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: "smooth" });
   };
@@ -1293,6 +1362,35 @@ export default function Landing() {
 
         .events-grid > .empty-state {
           flex: 1 0 100%;
+        }
+
+        .featured-events-section {
+          padding: 112px 0 20px;
+        }
+
+        .featured-events-grid {
+          display: flex;
+          gap: 18px;
+          overflow-x: auto;
+          overscroll-behavior-x: contain;
+          scroll-behavior: smooth;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding: 2px 2px 12px;
+        }
+
+        .featured-events-grid::-webkit-scrollbar {
+          display: none;
+        }
+
+        .featured-events-grid > .event-card {
+          flex: 0 0 clamp(260px, 30vw, 360px);
+          scroll-snap-align: start;
+        }
+
+        .featured-events-grid .event-img-wrap {
+          height: 190px;
         }
 
         .view-more-events {
@@ -2411,6 +2509,12 @@ export default function Landing() {
           gap: 20px;
         }
 
+        @media (max-width: 1100px) {
+          .featured-events-grid > .event-card {
+            flex-basis: min(42vw, 340px);
+          }
+        }
+
         @media (max-width: 900px) {
           .nav-links,
           .nav-actions {
@@ -2622,12 +2726,34 @@ export default function Landing() {
             flex-basis: 84%;
           }
 
+          .featured-events-grid {
+            gap: 16px;
+            margin-right: -20px;
+            padding-right: 20px;
+          }
+
+          .featured-events-grid > .event-card {
+            flex-basis: 84%;
+          }
+
+          .featured-events-grid .event-img-wrap {
+            height: 145px;
+          }
+
           .event-img-wrap {
             height: 215px;
           }
 
           .section {
             padding: 64px 0;
+          }
+
+          .featured-events-section {
+            padding: 88px 0 12px;
+          }
+
+          #events.section {
+            padding-top: 40px;
           }
 
           .section-header {
@@ -2813,6 +2939,65 @@ export default function Landing() {
           ))}
         </div>
       </section>
+
+      {(loadingFeaturedEvents || featuredEvents.length > 0) && (
+        <section className="section featured-events-section">
+          <div className="container">
+            <div className="events-head">
+              <div>
+                <p className="section-label">Handpicked for you</p>
+                <h2>Featured events</h2>
+              </div>
+              <div className="events-carousel-controls" role="group" aria-label="Featured event carousel controls">
+                <button
+                  type="button"
+                  aria-label="Scroll featured events left"
+                  disabled={!featuredScrollState.canScrollLeft}
+                  onClick={() => scrollFeaturedEvents(-1)}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Scroll featured events right"
+                  disabled={!featuredScrollState.canScrollRight}
+                  onClick={() => scrollFeaturedEvents(1)}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+            <div
+              className="featured-events-grid"
+              ref={featuredEventsTrackRef}
+              onScroll={() => {
+                const track = featuredEventsTrackRef.current;
+                if (!track) return;
+                setFeaturedScrollState({
+                  canScrollLeft: track.scrollLeft > 1,
+                  canScrollRight: track.scrollLeft + track.clientWidth < track.scrollWidth - 1,
+                });
+              }}
+            >
+              {loadingFeaturedEvents
+                ? Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="event-card skeleton-card">
+                    <div className="skeleton-img" />
+                    <div className="event-body">
+                      <div className="skeleton-line short" />
+                      <div className="skeleton-line title" />
+                      <div className="skeleton-line" />
+                      <div className="skeleton-line small" />
+                    </div>
+                  </div>
+                ))
+                : featuredEvents.map((event, index) => (
+                  <EventCard key={event.id} event={event} index={index} />
+                ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section id="events" className="section">
         <div className="container">

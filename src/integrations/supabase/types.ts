@@ -145,6 +145,32 @@ export type Database = {
         }
         Relationships: []
       }
+      featured_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          slot: number
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          slot: number
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          slot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "featured_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_fields: {
         Row: {
           event_id: string
