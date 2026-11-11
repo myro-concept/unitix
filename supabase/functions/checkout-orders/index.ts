@@ -43,6 +43,17 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+function escapeHtml(value: string): string {
+  const entities: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  };
+  return value.replace(/[&<>"']/g, (character) => entities[character] || character);
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -293,6 +304,26 @@ serve(async (req: Request) => {
       emailsFailed = 1;
     } else {
       try {
+        const siteUrl = (Deno.env.get("UNITIX_SITE_URL") || "https://unitix.ng").replace(/\/+$/, "");
+        type TicketLink = IssuedTicket & { url: string; number: number };
+
+        const ticketLinks: TicketLink[] = issuedTickets.map((ticket: IssuedTicket, index: number): TicketLink => ({
+          ...ticket,
+          url: `${siteUrl}/ticket/${encodeURIComponent(ticket.token)}`,
+          number: index + 1,
+        }));
+        const safeCustomerName = escapeHtml(contact.full_name.trim());
+        const safeEventName = escapeHtml(event.name);
+        const ticketHtml = ticketLinks.map((ticket: TicketLink) => `
+          <div style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:12px">
+            <p style="margin:0 0 4px;font-weight:700;color:#111827">Ticket ${ticket.number}: ${escapeHtml(ticket.attendee_name)}</p>
+            <p style="margin:0 0 14px;color:#6b7280">${escapeHtml(ticket.ticket_type_name)}</p>
+            <a href="${ticket.url}" style="display:inline-block;padding:11px 18px;border-radius:999px;background:#ff0048;color:#ffffff;text-decoration:none;font-weight:700">View ticket</a>
+          </div>
+        `).join("");
+        const textTicketLinks = ticketLinks.map((ticket: TicketLink) =>
+          `Ticket ${ticket.number} — ${ticket.attendee_name} (${ticket.ticket_type_name}): ${ticket.url}`
+        ).join("\n\n");
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -303,13 +334,23 @@ serve(async (req: Request) => {
           body: JSON.stringify({
             from: fromEmail,
             to: [contact.email.trim()],
-            template: {
-              id: "581b0672-44bf-4bc4-a9a1-b83ba4d27fee",
-              variables: {
-                customer_name: contact.full_name.trim(),
-                event_name: event.name,
-              },
-            },
+            subject: `Your Ticket Confirmation for ${event.name}`,
+            html: `
+              <div style="margin:0;padding:32px 16px;background:#f4f4f5;font-family:Arial,sans-serif;color:#111827">
+                <div style="max-width:560px;margin:0 auto;padding:28px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px">
+                  <span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden">Your UniTix ticket is confirmed! Your ticket details are inside.</span>
+                  <div style="margin:0 0 24px;display:flex;align-items:center;gap:8px">
+                    <img src="${siteUrl}/logo.png" width="32" height="32" alt="" style="display:block;border:0">
+                    <span style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#111827">UniTix</span>
+                  </div>
+                  <p style="margin:0 0 12px;line-height:1.6;color:#111827"><strong>Hello ${safeCustomerName},</strong></p>
+                  <p style="margin:0 0 20px;line-height:1.6;color:#4b5563">Your ticket for <strong>${safeEventName}</strong> has been successfully confirmed.</p>
+                  ${ticketHtml}
+                  <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280">Each ticket has its own QR code. Present the correct ticket at the event entrance. You can reopen these links whenever you need them.</p>
+                </div>
+              </div>
+            `,
+            text: `Hello ${contact.full_name.trim()},\n\nYour ticket for ${event.name} has been successfully confirmed.\n\n${textTicketLinks}\n\nEach ticket has its own QR code. Present the correct ticket at the event entrance.`,
           }),
         });
 
