@@ -1279,7 +1279,6 @@ export default function Landing() {
           scroll-snap-type: x mandatory;
           scrollbar-width: none;
           -ms-overflow-style: none;
-          touch-action: pan-x;
           padding: 2px 2px 12px;
         }
 
@@ -2877,9 +2876,6 @@ export default function Landing() {
                 <p>Try another search term or choose "All Schools".</p>
               </div>
             )}
-          </div>
-          <div className="view-more-events">
-            <a href="/events" className="primary-btn">View all events <ArrowRight size={16} /></a>
           </div>
         </div>
       </section>
