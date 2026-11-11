@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Copy,
   Clock,
+  Eye,
   Instagram,
   Loader2,
   MapPin,
@@ -31,6 +32,12 @@ import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 import NotFound from "./NotFound";
 import { ShareSheet } from "@/components/ShareSheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type OrganizerProfile = {
   id: string;
@@ -176,6 +183,7 @@ export default function EventDetails() {
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [flyerOpen, setFlyerOpen] = useState(false);
 
   useEffect(() => {
     async function loadOrganizer() {
@@ -583,9 +591,13 @@ export default function EventDetails() {
           max-width: 1200px;
           margin: 0 auto;
           padding: 36px 32px 0;
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
 
-        .back-floating a {
+        .back-floating a,
+        .flyer-view-button {
           width: 44px;
           height: 44px;
           border-radius: 50%;
@@ -596,6 +608,23 @@ export default function EventDetails() {
           justify-content: center;
           border: 1px solid rgba(229,231,235,0.85);
           backdrop-filter: blur(12px);
+        }
+
+        .flyer-view-button {
+          width: auto;
+          padding: 0 16px;
+          gap: 8px;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .back-floating a:hover,
+        .flyer-view-button:hover {
+          background: #ffffff;
+          transform: translateY(-1px);
         }
 
         .content-wrap {
@@ -1194,6 +1223,11 @@ export default function EventDetails() {
             padding: 22px 24px 0;
           }
 
+          .flyer-view-button {
+            padding: 0 13px;
+            font-size: 13px;
+          }
+
           .content-wrap {
             padding: 0 24px 64px;
             margin-top: -92px;
@@ -1501,8 +1535,37 @@ export default function EventDetails() {
             <Link to="/events" aria-label="Back to events">
               <ArrowRight size={18} style={{ transform: "rotate(180deg)" }} />
             </Link>
+            {flyer && (
+              <button
+                type="button"
+                className="flyer-view-button"
+                aria-label="View full event flyer"
+                onClick={() => setFlyerOpen(true)}
+              >
+                <Eye size={18} />
+                <span>View event flyer</span>
+              </button>
+            )}
           </div>
         </section>
+
+        {flyer && (
+          <Dialog open={flyerOpen} onOpenChange={setFlyerOpen}>
+            <DialogContent className="flex h-[96dvh] w-[96vw] max-w-none flex-col overflow-visible border-0 bg-black/95 p-0 text-white sm:rounded-xl">
+              <DialogTitle className="sr-only">{event.name} event flyer</DialogTitle>
+              <DialogDescription className="sr-only">
+                Full-size event flyer. Close this dialog to return to the event details.
+              </DialogDescription>
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
+                <img
+                  src={flyer}
+                  alt={`${event.name} event flyer`}
+                  className="mx-auto block h-auto max-h-none w-auto max-w-full object-contain"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <section className="content-wrap">
           <div className="main-grid">
