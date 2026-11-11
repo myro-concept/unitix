@@ -656,6 +656,8 @@ export default function Landing() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liveEvents, setLiveEvents] = useState<LandingEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const eventsTrackRef = useRef<HTMLDivElement>(null);
+  const [eventScrollState, setEventScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -730,6 +732,31 @@ export default function Landing() {
     const matchesDate = !eventDate || event.eventDateKey === eventDate;
     return matchesSearch && matchesCampus && matchesDate;
   });
+
+  useEffect(() => {
+    const track = eventsTrackRef.current;
+    if (!track) return;
+
+    const updateScrollState = () => {
+      setEventScrollState({
+        canScrollLeft: track.scrollLeft > 1,
+        canScrollRight: track.scrollLeft + track.clientWidth < track.scrollWidth - 1,
+      });
+    };
+
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+
+    return () => {
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [loadingEvents, filteredEvents.length]);
+
+  const scrollEvents = (direction: -1 | 1) => {
+    const track = eventsTrackRef.current;
+    if (!track) return;
+    track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: "smooth" });
+  };
 
   const exploreEvents = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1183,10 +1210,16 @@ export default function Landing() {
 
         .events-head {
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           justify-content: space-between;
           gap: 16px;
           margin-bottom: 34px;
+        }
+
+        .events-head-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
 
         .events-head h2 {
@@ -1205,10 +1238,62 @@ export default function Landing() {
           font-size: 14px;
         }
 
+        .events-carousel-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .events-carousel-controls button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 42px;
+          height: 42px;
+          border: 1px solid #e5e7eb;
+          border-radius: 50%;
+          background: #ffffff;
+          color: #111111;
+          cursor: pointer;
+          transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+        }
+
+        .events-carousel-controls button:hover:not(:disabled) {
+          border-color: #111111;
+          background: #111111;
+          color: #ffffff;
+        }
+
+        .events-carousel-controls button:disabled {
+          color: #9ca3af;
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
+
         .events-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+          display: flex;
           gap: 22px;
+          overflow-x: auto;
+          overscroll-behavior-x: contain;
+          scroll-behavior: smooth;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          touch-action: pan-x;
+          padding: 2px 2px 12px;
+        }
+
+        .events-grid::-webkit-scrollbar {
+          display: none;
+        }
+
+        .events-grid > .event-card {
+          flex: 0 0 clamp(260px, 30vw, 360px);
+          scroll-snap-align: start;
+        }
+
+        .events-grid > .empty-state {
+          flex: 1 0 100%;
         }
 
         .view-more-events {
@@ -2334,8 +2419,12 @@ export default function Landing() {
           }
 
           .events-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            scroll-padding-inline: 2px;
             gap: 18px;
+          }
+
+          .events-grid > .event-card {
+            flex-basis: min(42vw, 340px);
           }
 
           .mobile-menu-button {
@@ -2515,9 +2604,23 @@ export default function Landing() {
             display: block;
           }
 
+          .events-head-actions {
+            justify-content: space-between;
+            margin-top: 16px;
+          }
+
+          .events-carousel-controls {
+            display: none;
+          }
+
           .events-grid {
-            grid-template-columns: 1fr;
             gap: 16px;
+            margin-right: -20px;
+            padding-right: 20px;
+          }
+
+          .events-grid > .event-card {
+            flex-basis: 84%;
           }
 
           .event-img-wrap {
@@ -2719,12 +2822,39 @@ export default function Landing() {
               <p className="section-label">Discover</p>
               <h2>Upcoming events on UniTix</h2>
             </div>
-            <a href="/events" className="see-all">
-              See all <ArrowRight size={16} />
-            </a>
+            <div className="events-head-actions">
+              <div className="events-carousel-controls" role="group" aria-label="Event carousel controls">
+                <button
+                  type="button"
+                  aria-label="Scroll events left"
+                  disabled={!eventScrollState.canScrollLeft}
+                  onClick={() => scrollEvents(-1)}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Scroll events right"
+                  disabled={!eventScrollState.canScrollRight}
+                  onClick={() => scrollEvents(1)}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+              <a href="/events" className="see-all">
+                See all <ArrowRight size={16} />
+              </a>
+            </div>
           </div>
 
-          <div className="events-grid">
+          <div className="events-grid" ref={eventsTrackRef} onScroll={() => {
+            const track = eventsTrackRef.current;
+            if (!track) return;
+            setEventScrollState({
+              canScrollLeft: track.scrollLeft > 1,
+              canScrollRight: track.scrollLeft + track.clientWidth < track.scrollWidth - 1,
+            });
+          }}>
             {loadingEvents ? (
               Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="event-card skeleton-card">
