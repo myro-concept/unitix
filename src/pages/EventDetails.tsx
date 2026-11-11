@@ -1551,16 +1551,25 @@ export default function EventDetails() {
 
         {flyer && (
           <Dialog open={flyerOpen} onOpenChange={setFlyerOpen}>
-            <DialogContent className="flex h-[96dvh] w-[96vw] max-w-none flex-col overflow-visible border-0 bg-black/95 p-0 text-white sm:rounded-xl">
-              <DialogTitle className="sr-only">{event.name} event flyer</DialogTitle>
+            <DialogContent
+              overlayClassName="z-[10000] bg-slate-900/45"
+              closeButtonClassName="right-4 top-4 z-10 rounded-full p-2 text-slate-500 opacity-100 hover:bg-slate-100 hover:text-slate-900"
+              className="z-[10001] flex max-h-[82dvh] w-[min(750px,calc(100vw-32px))] max-w-none flex-col gap-0 overflow-hidden rounded-2xl border-0 bg-white p-5 shadow-2xl"
+            >
+              <div className="mb-4 flex shrink-0 items-center gap-3 pr-12">
+                <Share2 className="h-5 w-5 text-slate-800" />
+                <DialogTitle className="text-xl font-bold text-slate-900">
+                  Event Flyer
+                </DialogTitle>
+              </div>
               <DialogDescription className="sr-only">
                 Full-size event flyer. Close this dialog to return to the event details.
               </DialogDescription>
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-3">
+              <div className="min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded-xl">
                 <img
                   src={flyer}
                   alt={`${event.name} event flyer`}
-                  className="mx-auto block h-auto max-h-none w-auto max-w-full object-contain"
+                  className="mx-auto block h-auto w-auto max-w-full object-contain"
                 />
               </div>
             </DialogContent>
