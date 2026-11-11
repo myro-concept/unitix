@@ -1655,14 +1655,18 @@ export default function Events() {
             }
 
             .events-pagination {
-              align-items: flex-start;
+              align-items: center;
               flex-direction: column;
               gap: 14px;
             }
 
+            .pagination-summary {
+              text-align: center;
+            }
+
             .pagination-controls {
               width: 100%;
-              justify-content: flex-start;
+              justify-content: center;
               gap: 6px;
               flex-wrap: wrap;
             }
