@@ -339,11 +339,7 @@ serve(async (req: Request) => {
               <div style="margin:0;padding:32px 16px;background:#f4f4f5;font-family:Arial,sans-serif;color:#111827">
                 <div style="max-width:560px;margin:0 auto;padding:28px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px">
                   <span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden">Your UniTix ticket is confirmed! Your ticket details are inside.</span>
-                  <div style="margin:0 0 24px;display:flex;align-items:center;gap:8px">
-                    <img src="${siteUrl}/logo.png" width="32" height="32" alt="" style="display:block;border:0">
-                    <span style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#111827">UniTix</span>
-                  </div>
-                  <p style="margin:0 0 12px;line-height:1.6;color:#111827"><strong>Hello ${safeCustomerName},</strong></p>
+                  <p style="margin:0 0 16px;font-size:22px;line-height:1.4;color:#111827"><strong>Hello ${safeCustomerName},</strong></p>
                   <p style="margin:0 0 20px;line-height:1.6;color:#4b5563">Your ticket for <strong>${safeEventName}</strong> has been successfully confirmed.</p>
                   ${ticketHtml}
                   <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280">Each ticket has its own QR code. Present the correct ticket at the event entrance. You can reopen these links whenever you need them.</p>
