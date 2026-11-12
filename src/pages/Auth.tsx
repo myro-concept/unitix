@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { motion } from "framer-motion";
 import SEO from "@/seo/SEO";
 import logoGlyph from "@/assets/logo-glyph-160.png";
@@ -31,6 +32,7 @@ function AuthLogo() {
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const adminQuery = useIsAdmin();
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -40,8 +42,16 @@ const Auth = () => {
   const [signupSchool, setSignupSchool] = useState("");
 
   useEffect(() => {
-    if (user) navigate("/dashboard/events", { replace: true });
-  }, [user, navigate]);
+    if (!user || adminQuery.isPending) return;
+
+    if (adminQuery.isError) {
+      toast.error("Could not verify account access. Please try again.");
+      navigate("/dashboard/events", { replace: true });
+      return;
+    }
+
+    navigate(adminQuery.data ? "/admin" : "/dashboard/events", { replace: true });
+  }, [user, adminQuery.data, adminQuery.isPending, adminQuery.isError, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +65,6 @@ const Auth = () => {
       toast.error(error.message);
     } else {
       toast.success("Welcome back!");
-      navigate("/dashboard/events");
     }
   };
 
@@ -168,7 +177,7 @@ const Auth = () => {
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: "google",
                     options: {
-                      redirectTo: `${window.location.origin}/dashboard/events`,
+                      redirectTo: `${window.location.origin}/auth`,
                     },
                   });
 
@@ -258,7 +267,7 @@ const Auth = () => {
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: "google",
                     options: {
-                      redirectTo: `${window.location.origin}/dashboard/events`,
+                      redirectTo: `${window.location.origin}/auth`,
                     },
                   });
 

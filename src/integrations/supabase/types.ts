@@ -435,6 +435,69 @@ export type Database = {
           },
         ]
       }
+      withdrawal_requests: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          amount: number
+          bank_name: string | null
+          currency: string
+          id: string
+          organizer_company: string | null
+          organizer_email: string
+          organizer_id: string
+          organizer_name: string
+          organizer_phone: string | null
+          paid_at: string | null
+          paid_by: string | null
+          paid_reference: string | null
+          requested_at: string
+          receipt_path: string | null
+          status: string
+          submission_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          amount: number
+          bank_name?: string | null
+          currency?: string
+          id?: string
+          organizer_company?: string | null
+          organizer_email: string
+          organizer_id: string
+          organizer_name: string
+          organizer_phone?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_reference?: string | null
+          requested_at?: string
+          receipt_path?: string | null
+          status?: string
+          submission_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          amount?: number
+          bank_name?: string | null
+          currency?: string
+          id?: string
+          organizer_company?: string | null
+          organizer_email?: string
+          organizer_id?: string
+          organizer_name?: string
+          organizer_phone?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_reference?: string | null
+          requested_at?: string
+          receipt_path?: string | null
+          status?: string
+          submission_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -465,6 +528,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      create_withdrawal_request: {
+        Args: { p_amount: number; p_submission_id: string }
+        Returns: string
+      }
+      mark_withdrawal_paid: {
+        Args: { p_paid_reference?: string | null; p_receipt_path?: string | null; p_request_id: string }
+        Returns: string
       }
       check_in_ticket: {
         Args: { p_event_id: string; p_token: string }

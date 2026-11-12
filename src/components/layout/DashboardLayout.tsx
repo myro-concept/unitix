@@ -4,7 +4,6 @@ import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -27,7 +26,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
-  const { data: isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsReminderOpen, setIsSettingsReminderOpen] = useState(false);
@@ -51,9 +49,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     profile?.school?.trim(),
   );
   const shouldShowSettingsReminder = Boolean(user) && (!hasPersonalDetails || !hasBankDetails);
-  const dashboardNavItems = isAdmin
-    ? [...navItems, { title: "Featured events", url: "/dashboard/featured-events" }]
-    : navItems;
+  const dashboardNavItems = navItems;
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -115,7 +111,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <div className="ml-auto flex shrink-0 items-center gap-3">
           {user && (
-          <span className="hidden max-w-[180px] truncate text-xs text-[#6b7280] xl:block">
+            <span className="hidden max-w-[150px] truncate text-xs text-[#6b7280] lg:block xl:max-w-[200px]" title={user.email || undefined}>
               {user.email}
             </span>
           )}
@@ -169,6 +165,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#111111] truncate">{fullName}</p>
                   <p className="text-xs text-[#6b7280] truncate">{school}</p>
+                  {user?.email && <p className="text-xs text-[#6b7280] truncate">{user.email}</p>}
                 </div>
               </div>
 

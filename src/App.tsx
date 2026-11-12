@@ -7,7 +7,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -22,6 +24,8 @@ import Integrations from "./pages/dashboard/Integrations";
 import WalletPage from "./pages/dashboard/Wallet";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import FeaturedEvents from "./pages/dashboard/FeaturedEvents";
+import WithdrawalManagement from "./pages/dashboard/WithdrawalManagement";
+import AdminOverview from "./pages/admin/AdminOverview";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -77,7 +81,8 @@ const App = () => (
                   <DashboardLayout>
                     <Routes>
                       <Route path="events" element={<Events />} />
-                      <Route path="featured-events" element={<FeaturedEvents />} />
+                      <Route path="featured-events" element={<Navigate to="/admin/featured-events" replace />} />
+                      <Route path="withdrawals" element={<Navigate to="/admin/withdrawals" replace />} />
                       <Route path="events/create" element={<CreateEvent />} />
                       <Route path="events/:slug" element={<EventDetail />} />
                       <Route path="events/:slug/edit" element={<CreateEvent />} />
@@ -89,6 +94,19 @@ const App = () => (
                       <Route path="settings" element={<SettingsPage />} />
                     </Routes>
                   </DashboardLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/*" element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminLayout>
+                      <Routes>
+                        <Route index element={<AdminOverview />} />
+                        <Route path="withdrawals" element={<WithdrawalManagement />} />
+                        <Route path="featured-events" element={<FeaturedEvents />} />
+                      </Routes>
+                    </AdminLayout>
+                  </AdminRoute>
                 </ProtectedRoute>
               } />
 

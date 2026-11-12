@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, Loader2, Ticket, Wallet as WalletIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,11 +22,20 @@ type WalletTransaction = {
   date: string;
   amount: number;
   eventName: string;
+};
+
+type WalletWithdrawal = {
+  id: string;
+  amount: number;
+  currency: string;
   status: string;
+  requested_at: string;
+  paid_at: string | null;
 };
 
 export default function WalletPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
@@ -34,47 +43,71 @@ export default function WalletPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["wallet", user?.id],
     enabled: !!user,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data: registrations, error: registrationsError } = await supabase
-        .from("registrations")
-        .select("id, created_at, status, events!inner(name, ticket_price, user_id)")
+      const { data: tickets, error: ticketsError } = await supabase
+        .from("issued_tickets")
+        .select("id, amount_paid, created_at, status, events!inner(name, user_id), registrations!inner(status)")
         .eq("events.user_id", user!.id)
         .order("created_at", { ascending: false });
 
-      if (registrationsError) throw registrationsError;
+      if (ticketsError) throw ticketsError;
 
-      const transactions: WalletTransaction[] = (registrations || []).map((registration: any) => {
-        const event = Array.isArray(registration.events) ? registration.events[0] : registration.events;
-        return {
-          id: registration.id,
-          date: registration.created_at,
-          amount: Math.max(0, Number(event?.ticket_price || 0)),
-          eventName: event?.name || "Event",
-          status: registration.status,
-        };
-      });
+      const transactions: WalletTransaction[] = (tickets || [])
+        .filter((ticket) => {
+          const registration = Array.isArray(ticket.registrations) ? ticket.registrations[0] : ticket.registrations;
+          return ticket.status !== "cancelled" && registration?.status !== "cancelled";
+        })
+        .map((ticket) => {
+          const event = Array.isArray(ticket.events) ? ticket.events[0] : ticket.events;
+          return {
+            id: ticket.id,
+            date: ticket.created_at,
+            amount: Math.max(0, Number(ticket.amount_paid || 0)),
+            eventName: event?.name || "Event",
+          };
+        });
 
-      const totalTicketSales = transactions
-        .filter((tx) => tx.status !== "cancelled")
-        .reduce((sum, tx) => sum + tx.amount, 0);
+      const totalTicketSales = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+      const { data: withdrawals, error: withdrawalsError } = await supabase
+        .from("withdrawal_requests")
+        .select("id, amount, currency, status, requested_at, paid_at")
+        .eq("organizer_id", user!.id)
+        .order("requested_at", { ascending: false });
+
+      if (withdrawalsError) throw withdrawalsError;
 
       const platformFee = Math.round(totalTicketSales * PLATFORM_FEE_RATE);
-      const availableBalance = Math.max(0, totalTicketSales - platformFee);
+      const withdrawalHistory: WalletWithdrawal[] = withdrawals || [];
+      const pendingWithdrawals = withdrawalHistory
+        .filter((withdrawal) => withdrawal.status === "pending")
+        .reduce((sum, withdrawal) => sum + Number(withdrawal.amount), 0);
+      const paidWithdrawals = withdrawalHistory
+        .filter((withdrawal) => withdrawal.status === "paid")
+        .reduce((sum, withdrawal) => sum + Number(withdrawal.amount), 0);
+      const availableBalance = Math.max(0, totalTicketSales - platformFee - pendingWithdrawals - paidWithdrawals);
 
       return {
         transactions,
+        withdrawals: withdrawalHistory,
         totalTicketSales,
         platformFee,
+        pendingWithdrawals,
+        paidWithdrawals,
         availableBalance,
       };
     },
   });
 
   const transactions = data?.transactions || [];
+  const withdrawals = data?.withdrawals || [];
   const totalTicketSales = data?.totalTicketSales || 0;
   const platformFee = data?.platformFee || 0;
+  const pendingWithdrawals = data?.pendingWithdrawals || 0;
+  const paidWithdrawals = data?.paidWithdrawals || 0;
   const availableBalance = data?.availableBalance || 0;
 
   const withdrawalAmountNumber = useMemo(() => {
@@ -105,19 +138,24 @@ export default function WalletPage() {
 
     setIsSubmittingWithdrawal(true);
     try {
-      const { error } = await supabase.functions.invoke("withdraw-request", {
+      const { data: requestResult, error } = await supabase.functions.invoke("withdraw-request", {
         body: {
           amount: withdrawalAmountNumber,
           currency: "NGN",
+          submission_id: crypto.randomUUID(),
         },
       });
 
       if (error) throw error;
 
-      toast.success(`Withdrawal request sent to ${user.email}.`);
+      await queryClient.invalidateQueries({ queryKey: ["wallet", user.id] });
+      toast.success(`Withdrawal request submitted.`);
+      if (requestResult?.notification_error) {
+        toast.error("Your request was recorded, but an email notification could not be sent. Please contact support.");
+      }
       setIsWithdrawOpen(false);
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to submit withdrawal request.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit withdrawal request.");
     } finally {
       setIsSubmittingWithdrawal(false);
     }
@@ -184,11 +222,40 @@ export default function WalletPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold truncate">Ticket sales - {transaction.eventName}</p>
-                    <p className="text-sm text-muted-foreground">{new Date(transaction.date).toISOString().slice(0, 10)}</p>
+                    <p className="text-sm text-muted-foreground">{new Date(transaction.date).toLocaleDateString()}</p>
                   </div>
                 </div>
 
                 <p className="font-semibold text-emerald-600 whitespace-nowrap">+{naira.format(transaction.amount)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-5">
+        <h2 className="text-xl font-display font-semibold">Withdrawal History</h2>
+        {withdrawals.length === 0 ? (
+          <div className="rounded-xl border border-border p-5 text-sm text-muted-foreground">
+            No withdrawal requests yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {withdrawals.map((withdrawal) => (
+              <div key={withdrawal.id} className="rounded-xl border border-border p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-semibold">Withdrawal request</p>
+                  <p className="text-sm text-muted-foreground">
+                    Requested {new Date(withdrawal.requested_at).toLocaleDateString()}
+                    {withdrawal.paid_at ? ` · Paid ${new Date(withdrawal.paid_at).toLocaleDateString()}` : ""}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-semibold">{naira.format(Number(withdrawal.amount))}</p>
+                  <span className={`text-xs font-semibold ${withdrawal.status === "paid" ? "text-emerald-600" : "text-amber-600"}`}>
+                    {withdrawal.status === "paid" ? "Paid" : "Pending"}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -207,6 +274,16 @@ export default function WalletPage() {
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="text-muted-foreground">Platform Fee (4%)</span>
             <span className="font-semibold text-red-600">-{naira.format(platformFee)}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">Pending withdrawals</span>
+            <span className="font-semibold text-amber-600">-{naira.format(pendingWithdrawals)}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">Paid withdrawals</span>
+            <span className="font-semibold text-red-600">-{naira.format(paidWithdrawals)}</span>
           </div>
 
           <div className="h-px bg-border" />
