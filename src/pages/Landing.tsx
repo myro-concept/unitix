@@ -169,7 +169,7 @@ function Logo({ size = "md", textColor }: { size?: "sm" | "md" | "lg"; textColor
       <span
       style={{
         fontSize: txt,
-        fontFamily: "'Bricolage Grotesque', sans-serif",
+        fontFamily: "'Bricolage Grotesque Variable', sans-serif",
         fontWeight: 800,
         letterSpacing: "-0.02em",
         ...(textColor ? { color: textColor } : {}),
@@ -844,8 +844,6 @@ export default function Landing() {
     <SEO page="home" />  
     <div className="unitix-page">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
-
         * {
           box-sizing: border-box;
           margin: 0;
@@ -860,7 +858,7 @@ export default function Landing() {
           min-height: 100vh;
           background: #fafaf9;
           overflow-x: hidden;
-          font-family: 'DM Sans', system-ui, sans-serif;
+          font-family: 'DM Sans Variable', system-ui, sans-serif;
           color: #111111;
         }
 

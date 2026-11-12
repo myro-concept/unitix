@@ -216,6 +216,7 @@ export default function CreateEvent() {
       const path = `flyers/${crypto.randomUUID()}.webp`;
 
       const { error: uploadError } = await supabase.storage.from("event-assets").upload(path, optimizedFile, {
+        cacheControl: "31536000",
         contentType: "image/webp",
       });
       if (uploadError) throw uploadError;

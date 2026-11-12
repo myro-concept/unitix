@@ -64,7 +64,7 @@ const NotFound = () => {
           }
 
           .not-found-card h1 {
-            font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif;
+            font-family: 'Bricolage Grotesque Variable', 'DM Sans Variable', sans-serif;
             font-size: clamp(30px, 4vw, 44px);
             line-height: 1.1;
             letter-spacing: -0.05em;

@@ -27,7 +27,7 @@ function Logo() {
 
       <span
         className="font-extrabold tracking-[-0.03em]"
-        style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: "20px" }}
+        style={{ fontFamily: "'Bricolage Grotesque Variable', sans-serif", fontSize: "20px" }}
       >
         UniTix
       </span>

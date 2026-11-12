@@ -46,7 +46,7 @@ function Logo() {
       <span
         className="font-extrabold tracking-[-0.03em]"
         style={{
-          fontFamily: "'Bricolage Grotesque', sans-serif",
+          fontFamily: "'Bricolage Grotesque Variable', sans-serif",
           fontSize: "20px",
         }}
       >

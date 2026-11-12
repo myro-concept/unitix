@@ -391,7 +391,7 @@ export default function EventDetails() {
           min-height: 100vh;
           background: #fafaf9;
           color: #111111;
-          font-family: 'DM Sans', system-ui, sans-serif;
+          font-family: 'DM Sans Variable', system-ui, sans-serif;
           overflow-x: hidden;
         }
 
@@ -429,7 +429,7 @@ export default function EventDetails() {
           font-weight: 900;
           letter-spacing: -0.04em;
           color: #111111;
-          font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif;
+          font-family: 'Bricolage Grotesque Variable', 'DM Sans Variable', sans-serif;
         }
 
         .event-nav {

@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"DM Sans"', "system-ui", "sans-serif"],
-        display: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],
+        sans: ['"DM Sans Variable"', "system-ui", "sans-serif"],
+        display: ['"Bricolage Grotesque Variable"', "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

@@ -33,7 +33,7 @@ function Logo() {
       <div className="w-8 h-8 rounded-[10px] bg-[#FF0048] flex items-center justify-center overflow-hidden">
         <img src={logoGlyph} alt="UniTix" className="w-full h-full object-contain" />
       </div>
-      <span className="font-extrabold tracking-[-0.03em]" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: "20px" }}>
+      <span className="font-extrabold tracking-[-0.03em]" style={{ fontFamily: "'Bricolage Grotesque Variable', sans-serif", fontSize: "20px" }}>
         UniTix
       </span>
     </div>

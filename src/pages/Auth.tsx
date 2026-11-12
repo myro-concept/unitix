@@ -21,7 +21,7 @@ function AuthLogo() {
       </div>
       <span
         className="text-2xl font-extrabold tracking-tight text-foreground"
-        style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}
+        style={{ fontFamily: "'Bricolage Grotesque Variable', sans-serif" }}
       >
         UniTix
       </span>

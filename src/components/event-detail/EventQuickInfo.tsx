@@ -70,7 +70,11 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
       const path = `event-images/${event.id}.webp`;
       const { error } = await supabase.storage
         .from("event-assets")
-        .upload(path, optimizedFile, { upsert: true, contentType: "image/webp" });
+        .upload(path, optimizedFile, {
+          upsert: true,
+          cacheControl: "31536000",
+          contentType: "image/webp",
+        });
 
       if (error) throw error;
 

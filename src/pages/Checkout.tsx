@@ -448,9 +448,8 @@ const Checkout = () => {
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <div className="checkout-page" style={{ minHeight: '100vh', background: '#fafaf9', fontFamily: "'DM Sans', system-ui, sans-serif", color: '#111111' }}>
+    <div className="checkout-page" style={{ minHeight: '100vh', background: '#fafaf9', fontFamily: "'DM Sans Variable', system-ui, sans-serif", color: '#111111' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
         .checkout-page * { box-sizing: border-box; }
         .nav { position:fixed; top:0; left:0; right:0; z-index:9999; background:#ffffff; border-bottom:1px solid #e5e7eb; }
         .nav-inner { max-width:1200px; height:70px; margin:0 auto; padding:0 32px; display:flex; align-items:center; justify-content:space-between; position:relative; }
@@ -858,7 +857,7 @@ const Checkout = () => {
                 <div className="checkout-logo-mark" style={{ width:34, height:34, borderRadius:9, overflow:'hidden', background:'#FF0048', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <img src={logoGlyph} alt="UniTix" style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:'9px' }} />
                 </div>
-                <span style={{ fontSize:18, fontFamily:"'Bricolage Grotesque', sans-serif", fontWeight:800, letterSpacing:'-0.02em', color:'#111111' }}>UniTix</span>
+                <span style={{ fontSize:18, fontFamily:"'Bricolage Grotesque Variable', sans-serif", fontWeight:800, letterSpacing:'-0.02em', color:'#111111' }}>UniTix</span>
               </a>
               <p>The event ticketing platform built for Nigerian students.</p>
               <div className="checkout-socials">

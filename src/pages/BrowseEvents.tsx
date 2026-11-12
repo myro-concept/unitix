@@ -110,7 +110,7 @@ function Logo() {
 
       <span
         className="font-extrabold tracking-[-0.03em]"
-        style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: "20px" }}
+        style={{ fontFamily: "'Bricolage Grotesque Variable', sans-serif", fontSize: "20px" }}
       >
         UniTix
       </span>
@@ -404,7 +404,7 @@ export default function Events() {
             min-height: 100vh;
             background: #fafaf9;
             color: #111111;
-            font-family: 'DM Sans', system-ui, sans-serif;
+            font-family: 'DM Sans Variable', system-ui, sans-serif;
             overflow-x: hidden;
             --nav-height: 70px;
         }
@@ -443,7 +443,7 @@ export default function Events() {
         }
 
         .ut-logo span {
-            font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif;
+            font-family: 'Bricolage Grotesque Variable', 'DM Sans Variable', sans-serif;
             font-weight: 900;
             letter-spacing: -0.04em;
             color: #111111;
