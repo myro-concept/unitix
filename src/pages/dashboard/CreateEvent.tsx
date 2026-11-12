@@ -28,6 +28,7 @@ import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
 import { useCreateEvent, useUpdateEvent, useOwnedEventBySlug } from "@/hooks/useEvents";
 import { useBulkInsertFormFields, useFormFields } from "@/hooks/useFormFields";
+import { optimizeEventImage } from "@/lib/optimize-event-image";
 
 type TicketType = {
   id?: string;
@@ -206,21 +207,24 @@ export default function CreateEvent() {
   const handleFlyerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.currentTarget.value = "";
 
     setUploading(true);
 
     try {
-      const ext = file.name.split(".").pop();
-      const path = `flyers/${Date.now()}.${ext}`;
+      const optimizedFile = await optimizeEventImage(file);
+      const path = `flyers/${crypto.randomUUID()}.webp`;
 
-      const { error: uploadError } = await supabase.storage.from("event-assets").upload(path, file);
+      const { error: uploadError } = await supabase.storage.from("event-assets").upload(path, optimizedFile, {
+        contentType: "image/webp",
+      });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("event-assets").getPublicUrl(path);
       setFlyerUrl(urlData.publicUrl);
       toast.success("Flyer uploaded");
-    } catch (err: any) {
-      toast.error(err.message || "Upload failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -877,10 +881,16 @@ export default function CreateEvent() {
                       <>
                         <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
                         <span className="text-sm font-semibold text-[#111111]">Upload event flyer</span>
-                        <span className="text-xs text-muted-foreground">PNG or JPG, up to 5MB</span>
+                        <span className="text-xs text-muted-foreground">JPG, JPEG, or PNG. Optimized automatically.</span>
                       </>
                     )}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleFlyerUpload} disabled={uploading} />
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                      className="hidden"
+                      onChange={handleFlyerUpload}
+                      disabled={uploading}
+                    />
                   </label>
                 )}
 

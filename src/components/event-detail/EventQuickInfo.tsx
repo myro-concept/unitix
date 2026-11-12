@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent, type JSX } from "react";
+import { useRef, useState, type ChangeEvent, type JSX } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { ImageIcon, Upload, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { optimizeEventImage } from "@/lib/optimize-event-image";
 
 const eventTypes = [
   { value: "party", label: "Party / Hangout" },
@@ -28,6 +29,7 @@ interface Props {
 
 export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const startDate = event.event_date ? new Date(event.event_date) : null;
   const endDate = event.event_end_date ? new Date(event.event_end_date) : null;
 
@@ -59,25 +61,27 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.currentTarget.value = "";
 
-    const ext = file.name.split(".").pop();
-    const path = `event-images/${event.id}.${ext}`;
+    setUploadingImage(true);
 
-    const { error } = await supabase.storage
-      .from("event-assets")
-      .upload(path, file, { upsert: true });
+    try {
+      const optimizedFile = await optimizeEventImage(file);
+      const path = `event-images/${event.id}.webp`;
+      const { error } = await supabase.storage
+        .from("event-assets")
+        .upload(path, optimizedFile, { upsert: true, contentType: "image/webp" });
 
-    if (error) {
-      toast.error("Failed to upload image");
-      return;
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage.from("event-assets").getPublicUrl(path);
+      onUpdate({ background_image_url: `${urlData.publicUrl}?updated=${Date.now()}` });
+      toast.success("Image updated!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
     }
-
-    const { data: urlData } = supabase.storage
-      .from("event-assets")
-      .getPublicUrl(path);
-
-    onUpdate({ background_image_url: urlData.publicUrl });
-    toast.success("Image updated!");
   };
 
   const handleImageDelete = () => {
@@ -115,21 +119,36 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
                 size="sm"
                 className="absolute bottom-3 right-3 rounded-full"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
               >
-                <Upload className="mr-2 h-3.5 w-3.5" /> Replace flyer
+                <Upload className="mr-2 h-3.5 w-3.5" /> {uploadingImage ? "Optimizing..." : "Replace flyer"}
               </Button>
             </div>
           ) : (
             <label className="flex h-64 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#e5e7eb] bg-[#fafaf9] transition-colors hover:bg-white">
               <ImageIcon className="mb-2 h-6 w-6 text-muted-foreground" />
               <span className="text-sm font-semibold text-[#111111]">Upload event flyer</span>
-              <span className="text-xs text-muted-foreground">PNG or JPG, up to 5MB</span>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              <span className="text-xs text-muted-foreground">JPG, JPEG, or PNG</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                className="hidden"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+              />
             </label>
           )}
 
           {event.background_image_url && (
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              className="hidden"
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+            />
           )}
         </CardContent>
       </Card>
