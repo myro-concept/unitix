@@ -36,7 +36,6 @@ import eventHackathon from "@/assets/event-hackathon-ai.jpg";
 import eventJam from "@/assets/event-late-night-jam.jpg";
 import eventStartup from "@/assets/event-startup-weekend.jpg";
 import eventSummit from "@/assets/event-vibe-coding-summit.jpg";
-import heroBackground from "@/assets/hero-bg (2).jpg";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 import { supabase } from "@/integrations/supabase/client";
 import { CAMPUS_OPTIONS } from "@/lib/campusOptions";
@@ -1074,16 +1073,24 @@ export default function Landing() {
           overflow: hidden;
           padding: 48px 28px;
           border-radius: 24px;
-          background-position: center;
-          background-size: cover;
           box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .hero-background-image {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
         }
 
         .hero-stage::before {
           content: "";
           position: absolute;
           inset: 0;
-          z-index: 0;
+          z-index: 1;
           background: linear-gradient(rgba(18, 12, 19, 0.66), rgba(18, 12, 19, 0.8));
           pointer-events: none;
         }
@@ -2673,7 +2680,10 @@ export default function Landing() {
             min-height: 440px;
             padding: 40px 18px;
             border-radius: 18px;
-            background-position: center 42%;
+          }
+
+          .hero-background-image {
+            object-position: center 42%;
           }
 
           .hero-stage::before {
@@ -2858,13 +2868,9 @@ export default function Landing() {
 
       <section className="hero">
         <div className="hero-shell">
-          <div className="hero-stage" style={{ backgroundImage: `url("${heroBackground}")` }}>
-            <motion.div
-              className="hero-center"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-            >
+          <div className="hero-stage">
+            <img className="hero-background-image" src="/landing-hero.webp" alt="" aria-hidden="true" fetchPriority="high" />
+            <div className="hero-center">
               <h1>
                 Your campus event plug for{" "}
                 <span className="hero-highlight">
@@ -2925,7 +2931,7 @@ export default function Landing() {
               </form>
 
               <a href="/auth" className="primary-btn hero-create-btn">Create Event</a>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>

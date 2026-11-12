@@ -7,6 +7,17 @@
     <meta name="theme-color" content="#E11D48" />
 
     <link rel="icon" type="image/png" href="/favicon.ico" />
+    <script>
+      if (location.pathname === "/") {
+        const heroPreload = document.createElement("link");
+        heroPreload.rel = "preload";
+        heroPreload.as = "image";
+        heroPreload.href = "/landing-hero.webp";
+        heroPreload.type = "image/webp";
+        heroPreload.fetchPriority = "high";
+        document.head.append(heroPreload);
+      }
+    </script>
 
   </head>
 
