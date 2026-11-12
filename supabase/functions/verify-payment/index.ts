@@ -31,6 +31,9 @@ serve(async (req: Request) => {
     if (!paystackSecretKey) {
       throw new Error("PAYSTACK_SECRET_KEY is not configured");
     }
+    if (!paystackSecretKey.startsWith("sk_live_")) {
+      throw new Error("Payment verification is restricted to Paystack live mode. Configure a live secret key.");
+    }
 
     const { reference } = await req.json();
 

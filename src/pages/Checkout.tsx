@@ -169,8 +169,7 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false);
-  const testPaystackKey = (import.meta.env.VITE_PAYSTACK_TEST_PUBLIC_KEY || "").trim();
-  const paystackPublicKey = testPaystackKey;
+  const paystackPublicKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "").trim();
 
   const checkoutState = useMemo(() => (location.state as CheckoutState) || {
     ticketId: "",
@@ -378,13 +377,13 @@ const Checkout = () => {
 
     try {
       if (!paystackPublicKey) {
-        toast.error("Payment is not configured yet. Add VITE_PAYSTACK_TEST_PUBLIC_KEY for test mode.");
+        toast.error("Live payment is not configured. Add VITE_PAYSTACK_PUBLIC_KEY with your Paystack live public key.");
         setIsProcessing(false);
         return;
       }
 
-      if (!paystackPublicKey.startsWith("pk_test_")) {
-        toast.error("Checkout is in test mode. Use a Paystack test public key starting with pk_test_.");
+      if (!paystackPublicKey.startsWith("pk_live_")) {
+        toast.error("Live checkout requires a Paystack live public key starting with pk_live_.");
         setIsProcessing(false);
         return;
       }

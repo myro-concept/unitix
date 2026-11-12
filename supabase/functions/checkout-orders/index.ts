@@ -179,8 +179,8 @@ serve(async (req: Request) => {
       if (!paystackSecretKey) {
         throw new Error("PAYSTACK_SECRET_KEY is not configured.");
       }
-      if (!paystackSecretKey.startsWith("sk_test_")) {
-        throw new Error("Ticket checkout is restricted to Paystack test mode. Configure a test secret key.");
+      if (!paystackSecretKey.startsWith("sk_live_")) {
+        throw new Error("Ticket checkout is restricted to Paystack live mode. Configure a live secret key.");
       }
       if (!paymentReference) {
         return respond({ error: "A verified payment is required for this order." }, 400);
