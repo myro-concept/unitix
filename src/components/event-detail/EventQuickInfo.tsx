@@ -1,12 +1,12 @@
-import { useRef, useState, type ChangeEvent, type JSX } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type JSX } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tables } from "@/integrations/supabase/types";
-import { ImageIcon, Upload, Trash2, X } from "lucide-react";
+import { Tables, TablesUpdate } from "@/integrations/supabase/types";
+import { ImageIcon, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { optimizeEventImage } from "@/lib/optimize-event-image";
@@ -24,38 +24,74 @@ const eventTypes = [
 
 interface Props {
   event: Tables<"events">;
-  onUpdate: (fields: Partial<Tables<"events">>) => void;
+  onUpdate: (fields: Partial<TablesUpdate<"events">>) => Promise<void>;
+  onScheduleUpdate: (schedule: { event_date: string | null; event_end_date: string | null }) => Promise<void>;
 }
 
-export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element {
+function dateParts(value: string | null) {
+  const date = value ? new Date(value) : null;
+  return {
+    date: date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : "",
+    time: date && !Number.isNaN(date.getTime())
+      ? `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+      : "",
+  };
+}
+
+function toIsoDate(date: string, time: string): string | null {
+  return date ? new Date(`${date}T${time || "00:00"}:00`).toISOString() : null;
+}
+
+export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Props): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const startDate = event.event_date ? new Date(event.event_date) : null;
-  const endDate = event.event_end_date ? new Date(event.event_end_date) : null;
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [scheduleDraft, setScheduleDraft] = useState(() => ({
+    start: dateParts(event.event_date),
+    end: dateParts(event.event_end_date),
+  }));
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
-  const updateEventDate = (field: "event_date" | "event_end_date", part: "date" | "time", value: string) => {
-    const current = field === "event_date" ? startDate : endDate;
-    const baseDate = current && !Number.isNaN(current.getTime()) ? current : new Date();
+  useEffect(() => {
+    setScheduleDraft({
+      start: dateParts(event.event_date),
+      end: dateParts(event.event_end_date),
+    });
+  }, [event.event_date, event.event_end_date]);
 
-    if (part === "date") {
-      if (!value) {
-        onUpdate({ [field]: null });
-        return;
-      }
+  const nextStartDate = toIsoDate(scheduleDraft.start.date, scheduleDraft.start.time);
+  const nextEndDate = toIsoDate(scheduleDraft.end.date, scheduleDraft.end.time);
+  const dateChanged = (next: string | null, current: string | null) => {
+    if (!next || !current) return next !== current;
+    return new Date(next).getTime() !== new Date(current).getTime();
+  };
+  const scheduleChanged =
+    dateChanged(nextStartDate, event.event_date) ||
+    dateChanged(nextEndDate, event.event_end_date);
 
-      const time = current && !Number.isNaN(current.getTime())
-        ? `${String(current.getHours()).padStart(2, "0")}:${String(current.getMinutes()).padStart(2, "0")}`
-        : "00:00";
+  const saveFields = (fields: Partial<TablesUpdate<"events">>) => {
+    void onUpdate(fields).catch((error) => {
+      toast.error(error instanceof Error ? error.message : "Could not update the event.");
+    });
+  };
 
-      onUpdate({ [field]: new Date(`${value}T${time}:00`).toISOString() } as Partial<Tables<"events">>);
+  const saveSchedule = async () => {
+    if (!scheduleChanged) return;
+    if (!scheduleDraft.start.date) {
+      toast.error("Event start date is required.");
       return;
     }
+    if (!window.confirm("Changing the schedule will notify all ticket holders by email. Continue?")) return;
 
-    const currentDate = current && !Number.isNaN(current.getTime())
-      ? current.toISOString().split("T")[0]
-      : new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate()).toISOString().split("T")[0];
-
-    onUpdate({ [field]: new Date(`${currentDate}T${value || "00:00"}:00`).toISOString() } as Partial<Tables<"events">>);
+    setSavingSchedule(true);
+    try {
+      await onScheduleUpdate({ event_date: nextStartDate, event_end_date: nextEndDate });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the event schedule.");
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +115,7 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
       if (error) throw error;
 
       const { data: urlData } = supabase.storage.from("event-assets").getPublicUrl(path);
-      onUpdate({ background_image_url: `${urlData.publicUrl}?updated=${Date.now()}` });
+      await onUpdate({ background_image_url: `${urlData.publicUrl}?updated=${Date.now()}` });
       toast.success("Image updated!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to upload image");
@@ -88,9 +124,61 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
     }
   };
 
-  const handleImageDelete = () => {
-    onUpdate({ background_image_url: null });
-    toast.success("Image removed");
+  const handleImageDelete = async () => {
+    try {
+      await onUpdate({ background_image_url: null });
+      toast.success("Image removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove the image.");
+    }
+  };
+
+  const handleGalleryUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.currentTarget.files || []);
+    e.currentTarget.value = "";
+    if (files.length === 0) return;
+
+    setUploadingGallery(true);
+    try {
+      const urls: string[] = [];
+      for (const file of files) {
+        const optimizedFile = await optimizeEventImage(file);
+        const path = `event-gallery/${event.id}/${crypto.randomUUID()}.webp`;
+        const { error } = await supabase.storage
+          .from("event-assets")
+          .upload(path, optimizedFile, {
+            upsert: false,
+            cacheControl: "31536000",
+            contentType: "image/webp",
+          });
+        if (error) throw error;
+
+        const { data } = supabase.storage.from("event-assets").getPublicUrl(path);
+        urls.push(data.publicUrl);
+      }
+
+      await onUpdate({ gallery_urls: [...(event.gallery_urls || []), ...urls] });
+      toast.success(`${urls.length} gallery image${urls.length === 1 ? "" : "s"} added.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload gallery images.");
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const handleGalleryRemove = async (url: string) => {
+    try {
+      await onUpdate({ gallery_urls: (event.gallery_urls || []).filter((image) => image !== url) });
+      const marker = "/storage/v1/object/public/event-assets/";
+      const path = url.includes(marker) ? url.split(marker)[1]?.split("?")[0] : null;
+      if (path) {
+        const { error } = await supabase.storage.from("event-assets").remove([decodeURIComponent(path)]);
+        if (error) throw error;
+      }
+      toast.success("Gallery image removed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove the gallery image.");
+    }
   };
 
   return (
@@ -113,7 +201,7 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
                 variant="destructive"
                 size="icon"
                 className="absolute -right-2 -top-2 h-7 w-7 rounded-full"
-                onClick={handleImageDelete}
+                onClick={() => void handleImageDelete()}
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -154,6 +242,53 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               disabled={uploadingImage}
             />
           )}
+
+          <div className="space-y-3 border-t border-[#e5e7eb] pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-[#111111]">Event gallery</h3>
+                <p className="text-xs text-muted-foreground">Add extra photos to the public event page.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => galleryInputRef.current?.click()}
+                disabled={uploadingGallery}
+              >
+                <Upload className="mr-2 h-3.5 w-3.5" />
+                {uploadingGallery ? "Uploading..." : "Add photos"}
+              </Button>
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                className="hidden"
+                multiple
+                onChange={handleGalleryUpload}
+                disabled={uploadingGallery}
+              />
+            </div>
+            {(event.gallery_urls || []).length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {(event.gallery_urls || []).map((url) => (
+                  <div key={url} className="group relative aspect-square overflow-hidden rounded-lg border">
+                    <img src={url} alt="Event gallery" className="h-full w-full object-cover" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute right-1 top-1 h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      onClick={() => void handleGalleryRemove(url)}
+                      aria-label="Remove gallery image"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -172,7 +307,7 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               defaultValue={event.name}
               onBlur={(e) => {
                 if (e.target.value.trim() && e.target.value !== event.name) {
-                  onUpdate({ name: e.target.value.trim() });
+                  saveFields({ name: e.target.value.trim() });
                 }
               }}
             />
@@ -181,7 +316,7 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Event type</Label>
-              <Select defaultValue={event.event_type || "party"} onValueChange={(value) => onUpdate({ event_type: value })}>
+              <Select defaultValue={event.event_type || "party"} onValueChange={(value) => saveFields({ event_type: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -200,7 +335,7 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               <Input
                 placeholder="e.g., Main Auditorium, Babcock University"
                 defaultValue={event.location_value || ""}
-                onBlur={(e) => onUpdate({ location_value: e.target.value || null })}
+                onBlur={(e) => saveFields({ location_value: e.target.value || null })}
               />
             </div>
           </div>
@@ -210,8 +345,11 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               <Label>Start date</Label>
               <Input
                 type="date"
-                defaultValue={startDate ? startDate.toISOString().split("T")[0] : ""}
-                onBlur={(e) => updateEventDate("event_date", "date", e.target.value)}
+                value={scheduleDraft.start.date}
+                onChange={(e) => setScheduleDraft((current) => ({
+                  ...current,
+                  start: { ...current.start, date: e.target.value },
+                }))}
               />
             </div>
 
@@ -219,8 +357,11 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               <Label>Start time</Label>
               <Input
                 type="time"
-                defaultValue={startDate ? `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}` : ""}
-                onBlur={(e) => updateEventDate("event_date", "time", e.target.value)}
+                value={scheduleDraft.start.time}
+                onChange={(e) => setScheduleDraft((current) => ({
+                  ...current,
+                  start: { ...current.start, time: e.target.value },
+                }))}
               />
             </div>
           </div>
@@ -230,8 +371,11 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               <Label>End date</Label>
               <Input
                 type="date"
-                defaultValue={endDate ? endDate.toISOString().split("T")[0] : ""}
-                onBlur={(e) => updateEventDate("event_end_date", "date", e.target.value)}
+                value={scheduleDraft.end.date}
+                onChange={(e) => setScheduleDraft((current) => ({
+                  ...current,
+                  end: { ...current.end, date: e.target.value },
+                }))}
               />
             </div>
 
@@ -239,10 +383,20 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               <Label>End time</Label>
               <Input
                 type="time"
-                defaultValue={endDate ? `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}` : ""}
-                onBlur={(e) => updateEventDate("event_end_date", "time", e.target.value)}
+                value={scheduleDraft.end.time}
+                onChange={(e) => setScheduleDraft((current) => ({
+                  ...current,
+                  end: { ...current.end, time: e.target.value },
+                }))}
               />
             </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Ticket holders will be notified of schedule changes.</p>
+            <Button type="button" size="sm" onClick={saveSchedule} disabled={!scheduleChanged || savingSchedule}>
+              {savingSchedule ? "Saving..." : "Save schedule"}
+            </Button>
           </div>
 
           <div className="space-y-2">
@@ -251,7 +405,7 @@ export default function EventQuickInfo({ event, onUpdate }: Props): JSX.Element 
               rows={4}
               placeholder="Describe the event vibe, activities, performers, dress code, ticket benefits, and entry details."
               defaultValue={event.description || ""}
-              onBlur={(e) => onUpdate({ description: e.target.value || null })}
+              onBlur={(e) => saveFields({ description: e.target.value || null })}
             />
           </div>
         </CardContent>

@@ -3,14 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, ExternalLink, Copy, MoreVertical } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
 interface Props {
   event: Tables<"events">;
   onStatusChange: (status: "draft" | "live" | "past") => void;
-  onDelete: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -50,16 +49,22 @@ export default function EventDetailHeader({ event, onStatusChange }: Props) {
       <div className="flex items-center gap-2 shrink-0">
         {/* Desktop actions */}
         <div className="hidden sm:flex items-center gap-2">
-          <Select value={event.status} onValueChange={(v) => onStatusChange(v as any)}>
+          <Select
+            value={event.status}
+            onValueChange={(v) => onStatusChange(v as "draft" | "live" | "past")}
+          >
             <SelectTrigger className="w-24 h-8 text-xs rounded-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="draft">Draft</SelectItem>
+              {event.status !== "live" && <SelectItem value="draft">Draft</SelectItem>}
               <SelectItem value="live">Live</SelectItem>
-              <SelectItem value="past">Past</SelectItem>
+              {event.status === "live" && <SelectItem value="past">Past</SelectItem>}
             </SelectContent>
           </Select>
+          <Button variant="outline" size="sm" className="h-8 text-xs rounded-full" asChild>
+            <Link to={`/dashboard/events/${event.slug}/edit`}>Edit event</Link>
+          </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs rounded-full" onClick={handleCopyLink}>
             <Copy className="w-3 h-3 mr-1" /> Copy link
           </Button>
@@ -79,14 +84,16 @@ export default function EventDetailHeader({ event, onStatusChange }: Props) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onStatusChange("draft")}>
-                Set Draft
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange("live")}>
-                Set Live
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange("past")}>
-                Set Past
+              {event.status === "live" ? (
+                <DropdownMenuItem onClick={() => onStatusChange("past")}>Mark as past</DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem onClick={() => onStatusChange("draft")}>Set Draft</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onStatusChange("live")}>Set Live</DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem asChild>
+                <Link to={`/dashboard/events/${event.slug}/edit`}>Edit event</Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopyLink}>
                 <Copy className="w-3.5 h-3.5 mr-2" /> Copy Link

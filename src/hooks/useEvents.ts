@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export type Event = Tables<"events">;
 
+type CreateEventInput = Omit<TablesInsert<"events">, "slug" | "user_id">;
+
 export function useEvents(search?: string) {
   const { user } = useAuth();
   return useQuery({
@@ -80,28 +82,14 @@ export function useCreateEvent() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (input: {
-      name: string;
-      description?: string;
-      event_date?: string;
-      event_end_date?: string;
-      timezone?: string;
-      event_type?: string;
-      template?: string;
-      location_type?: string;
-      location_value?: string;
-      ticket_price?: number;
-      requires_approval?: boolean;
-      capacity?: number;
-      status?: string;
-    }) => {
+    mutationFn: async (input: CreateEventInput) => {
       const slug = generateSlug(input.name);
       const { data, error } = await supabase.from("events").insert({
         ...input,
         slug,
         user_id: user!.id,
-        status: input.status || "live",
-      } as any).select().single();
+        status: input.status ?? "live",
+      }).select().single();
       if (error) throw error;
       return data as Event;
     },
@@ -120,6 +108,9 @@ export function useUpdateEvent() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["event", data.id] });
+      qc.invalidateQueries({ queryKey: ["event-slug"] });
+      qc.invalidateQueries({ queryKey: ["owned-event-slug"] });
+      qc.invalidateQueries({ queryKey: ["event-edit-history", data.id] });
     },
   });
 }

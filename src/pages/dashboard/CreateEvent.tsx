@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import logoGlyph from "@/assets/logo-glyph-160.png";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { useCreateEvent, useUpdateEvent, useOwnedEventBySlug } from "@/hooks/useEvents";
 import { useBulkInsertFormFields, useFormFields } from "@/hooks/useFormFields";
 import { optimizeEventImage } from "@/lib/optimize-event-image";
@@ -85,6 +86,19 @@ function buildLagosTimestamp(date: string, time: string) {
   if (!date) return undefined;
   const hhmm = time ? `${time}:00` : "00:00:00";
   return `${date}T${hhmm}+01:00`;
+}
+
+function getErrorMessage(error: unknown): string | undefined {
+  if (error instanceof Error) return error.message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+  return undefined;
 }
 
 export default function CreateEvent() {
@@ -276,7 +290,7 @@ export default function CreateEvent() {
             event_id: eventId,
             name: ticket.name.trim(),
             price: Number(ticket.price),
-            quantity: ticket.quantity ? Number(ticket.quantity) : null,
+            quantity: ticket.quantity.trim() !== "" ? Number(ticket.quantity) : null,
           }))
       : [
           {
@@ -291,7 +305,7 @@ export default function CreateEvent() {
             name: "Free Ticket",
             price: 0,
             quantity: ticketTypes[0]?.id
-              ? ticketTypes[0].quantity ? Number(ticketTypes[0].quantity) : null
+              ? ticketTypes[0].quantity.trim() !== "" ? Number(ticketTypes[0].quantity) : null
               : capacity ? Number(capacity) : null,
           },
         ];
@@ -411,20 +425,42 @@ export default function CreateEvent() {
         location_type: "physical",
         location_value: locationAddress,
         ticket_price: isPaid && firstPaidTicket ? parseFloat(firstPaidTicket.price) : undefined,
-        capacity: capacity ? parseInt(capacity) : totalTicketQuantity || undefined,
+        capacity: capacity ? parseInt(capacity) : isEditMode ? null : totalTicketQuantity || undefined,
         background_image_url: flyerUrl || undefined,
         color_mode: "light",
         requires_approval: false,
-        status: "live",
-      } as any;
+        status: isEditMode && existingEvent ? existingEvent.status : "live",
+      } satisfies TablesInsert<"events">;
 
       if (isEditMode && existingEvent?.id) {
-        await updateEvent.mutateAsync({ id: existingEvent.id, ...eventData } as any);
+        const sameInstant = (left: string | null, right: string | null) =>
+          left === null || right === null
+            ? left === right
+            : Date.parse(left) === Date.parse(right);
+        const scheduleChanged =
+          !sameInstant(existingEvent.event_date, eventData.event_date || null) ||
+          !sameInstant(existingEvent.event_end_date, eventData.event_end_date || null);
+
+        if (scheduleChanged) {
+          if (!window.confirm("Changing the schedule will notify all ticket holders by email. Continue?")) return;
+          const { data: scheduleResult, error: scheduleError } = await supabase.functions.invoke("change-event-schedule", {
+            body: {
+              event_id: existingEvent.id,
+              event_date: eventData.event_date || null,
+              event_end_date: eventData.event_end_date || null,
+            },
+          });
+          if (scheduleError) throw scheduleError;
+          if (scheduleResult?.notification_warning) toast.warning(scheduleResult.notification_warning);
+        }
+
+        const { event_date: _eventDate, event_end_date: _eventEndDate, ...eventUpdates } = eventData;
+        const updatedEvent = await updateEvent.mutateAsync({ id: existingEvent.id, ...eventUpdates });
 
         try {
           await supabase.from("form_fields").delete().eq("event_id", existingEvent.id);
           await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: existingEvent.id })));
-        } catch (fieldErr: any) {
+        } catch (fieldErr: unknown) {
           console.warn("Form fields could not be saved:", fieldErr);
           toast.error("Event saved, but registration fields could not be updated. Please sync latest database migrations.");
         }
@@ -432,29 +468,29 @@ export default function CreateEvent() {
         await saveTicketTypes(existingEvent.id, true);
 
         toast.success("Event updated");
-        navigate(`/dashboard/events/${existingEvent.slug}`);
+        navigate(`/dashboard/events/${updatedEvent.slug}`);
         return;
       }
 
       const event = await createEvent.mutateAsync(eventData);
       try {
         await bulkInsertFields.mutateAsync(fields.map((f) => ({ ...f, event_id: event.id })));
-      } catch (fieldErr: any) {
+      } catch (fieldErr: unknown) {
         console.warn("Form fields could not be saved:", fieldErr);
         toast.error("Event published, but registration fields could not be created. Please sync latest database migrations.");
       }
 
       try {
         await saveTicketTypes(event.id);
-      } catch (ticketErr: any) {
+      } catch (ticketErr: unknown) {
         console.warn("Ticket types could not be saved:", ticketErr);
         toast.error("Event published, but ticket types could not be created. Please sync latest database migrations.");
       }
 
       setCreatedSlug(event.slug);
       setShowSuccess(true);
-    } catch (err: any) {
-      toast.error(err.message || `Failed to ${isEditMode ? "update" : "create"} event`);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || `Failed to ${isEditMode ? "update" : "create"} event`);
     }
   };
 
@@ -733,6 +769,11 @@ export default function CreateEvent() {
                   <p className="text-sm text-muted-foreground">
                     Create one price or multiple ticket types like Regular, VIP, or Table.
                   </p>
+                  {isEditMode && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Price changes apply to new purchases only. Available quantity is remaining stock; existing tickets stay valid.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between rounded-2xl border border-[#e5e7eb] bg-[#fafaf9] p-4">
@@ -784,7 +825,7 @@ export default function CreateEvent() {
                             <Label>Available quantity</Label>
                             <Input
                               type="number"
-                              min="1"
+                              min={isEditMode ? "0" : "1"}
                               placeholder="100"
                               value={ticket.quantity}
                               onChange={(e) => updateTicketType(index, "quantity", e.target.value)}
@@ -845,6 +886,11 @@ export default function CreateEvent() {
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
                   />
+                  {isEditMode && (
+                    <p className="text-xs text-muted-foreground">
+                      Capacity cannot be reduced below tickets already sold.
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

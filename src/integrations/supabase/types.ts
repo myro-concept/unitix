@@ -74,6 +74,7 @@ export type Database = {
           event_date: string | null
           event_end_date: string | null
           event_type: string | null
+          gallery_urls: string[]
           id: string
           location_type: string | null
           location_value: string | null
@@ -82,6 +83,7 @@ export type Database = {
           primary_color: string | null
           registration_deadline: string | null
           registration_limit: number | null
+          refund_policy: string | null
           requires_approval: boolean | null
           slug: string
           status: Database["public"]["Enums"]["event_status"]
@@ -100,6 +102,7 @@ export type Database = {
           event_date?: string | null
           event_end_date?: string | null
           event_type?: string | null
+          gallery_urls?: string[]
           id?: string
           location_type?: string | null
           location_value?: string | null
@@ -108,6 +111,7 @@ export type Database = {
           primary_color?: string | null
           registration_deadline?: string | null
           registration_limit?: number | null
+          refund_policy?: string | null
           requires_approval?: boolean | null
           slug: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -126,6 +130,7 @@ export type Database = {
           event_date?: string | null
           event_end_date?: string | null
           event_type?: string | null
+          gallery_urls?: string[]
           id?: string
           location_type?: string | null
           location_value?: string | null
@@ -134,6 +139,7 @@ export type Database = {
           primary_color?: string | null
           registration_deadline?: string | null
           registration_limit?: number | null
+          refund_policy?: string | null
           requires_approval?: boolean | null
           slug?: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -166,6 +172,85 @@ export type Database = {
             foreignKeyName: "featured_events_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_edit_history: {
+        Row: {
+          actor_id: string | null
+          actor_email: string | null
+          changed_at: string
+          changes: Json
+          event_id: string
+          id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_email?: string | null
+          changed_at?: string
+          changes: Json
+          event_id: string
+          id?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_email?: string | null
+          changed_at?: string
+          changes?: Json
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_edit_history_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_refund_policy_requests: {
+        Row: {
+          event_id: string
+          id: string
+          organizer_id: string
+          requested_policy: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          organizer_id: string
+          requested_policy: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          organizer_id?: string
+          requested_policy?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_refund_policy_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -528,6 +613,24 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      update_event_schedule: {
+        Args: {
+          p_actor_email: string | null
+          p_actor_id: string
+          p_event_date: string | null
+          p_event_end_date: string | null
+          p_event_id: string
+        }
+        Returns: Database["public"]["Tables"]["events"]["Row"]
+      }
+      review_event_refund_policy_request: {
+        Args: {
+          p_decision: string
+          p_request_id: string
+          p_review_note?: string | null
+        }
+        Returns: string
       }
       create_withdrawal_request: {
         Args: { p_amount: number; p_submission_id: string }

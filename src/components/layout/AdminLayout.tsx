@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut, Menu, Star, WalletCards } from "lucide-react";
+import { FileCheck2, LayoutDashboard, LogOut, Menu, Star, WalletCards } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -10,6 +10,7 @@ const adminNavItems = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard },
   { title: "Withdrawals", url: "/admin/withdrawals", icon: WalletCards },
   { title: "Featured events", url: "/admin/featured-events", icon: Star },
+  { title: "Refund policy requests", url: "/admin/refund-policy-requests", icon: FileCheck2 },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

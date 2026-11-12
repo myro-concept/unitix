@@ -26,6 +26,7 @@ const SettingsPage = lazy(() => import("./pages/dashboard/SettingsPage"));
 const FeaturedEvents = lazy(() => import("./pages/dashboard/FeaturedEvents"));
 const WithdrawalManagement = lazy(() => import("./pages/dashboard/WithdrawalManagement"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
+const EventRefundPolicyRequests = lazy(() => import("./pages/admin/EventRefundPolicyRequests"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const About = lazy(() => import("./pages/About"));
 const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
@@ -105,6 +106,7 @@ const App = () => (
                           <Route index element={<AdminOverview />} />
                           <Route path="withdrawals" element={<WithdrawalManagement />} />
                           <Route path="featured-events" element={<FeaturedEvents />} />
+                          <Route path="refund-policy-requests" element={<EventRefundPolicyRequests />} />
                         </Routes>
                       </AdminLayout>
                     </AdminRoute>

@@ -1538,6 +1538,22 @@ export default function EventDetails() {
           </div>
         </section>
 
+        {(event.gallery_urls || []).length > 0 && (
+          <section className="mx-auto max-w-6xl px-5 pt-6 sm:px-8" aria-label="Event photo gallery">
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {event.gallery_urls.map((image, index) => (
+                <img
+                  key={image}
+                  src={image}
+                  alt={`${event.name} gallery photo ${index + 1}`}
+                  loading="lazy"
+                  className="h-28 w-40 shrink-0 rounded-xl object-cover sm:h-36 sm:w-52"
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {flyer && (
           <Dialog open={flyerOpen} onOpenChange={setFlyerOpen}>
             <DialogContent
@@ -1620,6 +1636,13 @@ export default function EventDetails() {
                   {event.description ||
                     "Get ready for a smooth campus event experience. Buy your ticket, keep your confirmation, and show up ready."}
                 </p>
+
+                {event.refund_policy && (
+                  <div className="mt-5 rounded-2xl border border-[#e5e7eb] bg-white p-4">
+                    <h3 className="font-semibold">Event refund policy</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-[#6b7280]">{event.refund_policy}</p>
+                  </div>
+                )}
 
                 <div className="event-actions-line">
                   <button type="button" onClick={handleCopyLink} aria-label="Copy event link" className="copy-link-btn cursor-pointer">
