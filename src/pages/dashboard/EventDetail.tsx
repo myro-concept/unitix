@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Star } from "lucide-react";
 import { useOwnedEventBySlug, useUpdateEvent } from "@/hooks/useEvents";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,10 +65,43 @@ const EventDetail = () => {
     }
   };
 
+  const featureRequestSubject = `Feature request: ${event.name}`;
+  const featureRequestBody = [
+    "Hi UniTix team,",
+    "",
+    "I would like to request that my event be featured on UniTix.",
+    `Event: ${event.name}`,
+    `Event link: ${window.location.origin}/events/${event.slug}`,
+    "",
+    "Thank you.",
+  ].join("\n");
+  const featureRequestHref = `mailto:hello@unitix.ng?subject=${encodeURIComponent(featureRequestSubject)}&body=${encodeURIComponent(featureRequestBody)}`;
+
   return (
     <div className="space-y-6">
       <EventDetailHeader event={event} onStatusChange={handleStatusChange} />
       <EventQuickInfo event={event} onUpdate={handleUpdate} onScheduleUpdate={handleScheduleUpdate} />
+
+      <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <Star className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="font-semibold">Get your event featured</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Send us a request and we’ll review your event for a featured spot.
+            </p>
+          </div>
+        </div>
+        <a
+          href={featureRequestHref}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <Mail className="h-4 w-4" aria-hidden="true" />
+          Request featuring
+        </a>
+      </section>
 
       <EventAttendeesTable eventId={event.id} />
       <EventRefundPolicy eventId={event.id} currentPolicy={event.refund_policy} />
