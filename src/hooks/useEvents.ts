@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { generateEventSlug } from "@/lib/event-slug";
 
 export type Event = Tables<"events">;
 
@@ -70,20 +71,12 @@ export function useOwnedEventBySlug(slug: string | undefined) {
   });
 }
 
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
 export function useCreateEvent() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (input: CreateEventInput) => {
-      const slug = generateSlug(input.name);
+      const slug = generateEventSlug(input.name);
       const { data, error } = await supabase.from("events").insert({
         ...input,
         slug,
@@ -101,6 +94,9 @@ export function useUpdateEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: TablesUpdate<"events"> & { id: string }) => {
+      if (updates.name !== undefined) {
+        updates.slug = generateEventSlug(updates.name);
+      }
       const { data, error } = await supabase.from("events").update(updates).eq("id", id).select().single();
       if (error) throw error;
       return data as Event;

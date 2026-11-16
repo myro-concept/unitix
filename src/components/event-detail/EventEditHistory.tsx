@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
+import { formatEditHistoryValue } from "@/lib/event-edit-history";
 
 type EventEdit = {
   id: string;
@@ -30,12 +31,6 @@ const fieldLabels: Record<string, string> = {
   refund_policy: "Refund policy",
   status: "Status",
 };
-
-function displayValue(value: Json | undefined): string {
-  if (value === undefined || value === null || value === "") return "—";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
 
 export default function EventEditHistory({ eventId }: { eventId: string }) {
   const historyQuery = useQuery({
@@ -91,7 +86,7 @@ export default function EventEditHistory({ eventId }: { eventId: string }) {
                       return (
                         <li key={field}>
                           <span className="font-medium text-foreground">{fieldLabels[field] || field}:</span>{" "}
-                          {displayValue(change.old)} → {displayValue(change.new)}
+                          {formatEditHistoryValue(field, change.old)} → {formatEditHistoryValue(field, change.new)}
                         </li>
                       );
                     })}

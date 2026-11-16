@@ -44,14 +44,19 @@ function toIsoDate(date: string, time: string): string | null {
 
 export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Props): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [scheduleDraft, setScheduleDraft] = useState(() => ({
     start: dateParts(event.event_date),
     end: dateParts(event.event_end_date),
   }));
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [detailsDraft, setDetailsDraft] = useState(() => ({
+    name: event.name,
+    event_type: event.event_type || "party",
+    location_value: event.location_value || "",
+    description: event.description || "",
+  }));
+  const [savingDetails, setSavingDetails] = useState(false);
 
   useEffect(() => {
     setScheduleDraft({
@@ -59,6 +64,15 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
       end: dateParts(event.event_end_date),
     });
   }, [event.event_date, event.event_end_date]);
+
+  useEffect(() => {
+    setDetailsDraft({
+      name: event.name,
+      event_type: event.event_type || "party",
+      location_value: event.location_value || "",
+      description: event.description || "",
+    });
+  }, [event.name, event.event_type, event.location_value, event.description]);
 
   const nextStartDate = toIsoDate(scheduleDraft.start.date, scheduleDraft.start.time);
   const nextEndDate = toIsoDate(scheduleDraft.end.date, scheduleDraft.end.time);
@@ -69,11 +83,46 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
   const scheduleChanged =
     dateChanged(nextStartDate, event.event_date) ||
     dateChanged(nextEndDate, event.event_end_date);
+  const detailsChanged =
+    detailsDraft.name.trim() !== event.name ||
+    detailsDraft.event_type !== (event.event_type || "party") ||
+    (detailsDraft.location_value.trim() || null) !== (event.location_value || null) ||
+    (detailsDraft.description.trim() || null) !== (event.description || null);
 
   const saveFields = (fields: Partial<TablesUpdate<"events">>) => {
     void onUpdate(fields).catch((error) => {
       toast.error(error instanceof Error ? error.message : "Could not update the event.");
     });
+  };
+
+  const saveDetails = async () => {
+    const name = detailsDraft.name.trim();
+    if (!name) {
+      toast.error("Event name is required.");
+      return;
+    }
+
+    const fields: Partial<TablesUpdate<"events">> = {};
+    if (name !== event.name) fields.name = name;
+    if (detailsDraft.event_type !== (event.event_type || "party")) {
+      fields.event_type = detailsDraft.event_type;
+    }
+    const location = detailsDraft.location_value.trim() || null;
+    if (location !== event.location_value) fields.location_value = location;
+    const description = detailsDraft.description.trim() || null;
+    if (description !== event.description) fields.description = description;
+
+    if (Object.keys(fields).length === 0) return;
+
+    setSavingDetails(true);
+    try {
+      await onUpdate(fields);
+      toast.success("Event details saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the event.");
+    } finally {
+      setSavingDetails(false);
+    }
   };
 
   const saveSchedule = async () => {
@@ -131,55 +180,6 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
       toast.success("Image removed");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not remove the image.");
-    }
-  };
-
-  const handleGalleryUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.currentTarget.files || []);
-    e.currentTarget.value = "";
-    if (files.length === 0) return;
-
-    setUploadingGallery(true);
-    try {
-      const urls: string[] = [];
-      for (const file of files) {
-        const optimizedFile = await optimizeEventImage(file);
-        const extension = optimizedFile.name.split(".").pop();
-        const path = `event-gallery/${event.id}/${crypto.randomUUID()}.${extension}`;
-        const { error } = await supabase.storage
-          .from("event-assets")
-          .upload(path, optimizedFile, {
-            upsert: false,
-            cacheControl: "31536000",
-            contentType: optimizedFile.type,
-          });
-        if (error) throw error;
-
-        const { data } = supabase.storage.from("event-assets").getPublicUrl(path);
-        urls.push(data.publicUrl);
-      }
-
-      await onUpdate({ gallery_urls: [...(event.gallery_urls || []), ...urls] });
-      toast.success(`${urls.length} gallery image${urls.length === 1 ? "" : "s"} added.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to upload gallery images.");
-    } finally {
-      setUploadingGallery(false);
-    }
-  };
-
-  const handleGalleryRemove = async (url: string) => {
-    try {
-      await onUpdate({ gallery_urls: (event.gallery_urls || []).filter((image) => image !== url) });
-      const marker = "/storage/v1/object/public/event-assets/";
-      const path = url.includes(marker) ? url.split(marker)[1]?.split("?")[0] : null;
-      if (path) {
-        const { error } = await supabase.storage.from("event-assets").remove([decodeURIComponent(path)]);
-        if (error) throw error;
-      }
-      toast.success("Gallery image removed.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove the gallery image.");
     }
   };
 
@@ -245,52 +245,6 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
             />
           )}
 
-          <div className="space-y-3 border-t border-[#e5e7eb] pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-semibold text-[#111111]">Event gallery</h3>
-                <p className="text-xs text-muted-foreground">Add extra photos to the public event page.</p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => galleryInputRef.current?.click()}
-                disabled={uploadingGallery}
-              >
-                <Upload className="mr-2 h-3.5 w-3.5" />
-                {uploadingGallery ? "Uploading..." : "Add photos"}
-              </Button>
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                className="hidden"
-                multiple
-                onChange={handleGalleryUpload}
-                disabled={uploadingGallery}
-              />
-            </div>
-            {(event.gallery_urls || []).length > 0 && (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {(event.gallery_urls || []).map((url) => (
-                  <div key={url} className="group relative aspect-square overflow-hidden rounded-lg border">
-                    <img src={url} alt="Event gallery" className="h-full w-full object-cover" />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute right-1 top-1 h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                      onClick={() => void handleGalleryRemove(url)}
-                      aria-label="Remove gallery image"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
@@ -306,19 +260,18 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
             <Input
               id="event-name"
               placeholder="e.g., Freshers Glow Party"
-              defaultValue={event.name}
-              onBlur={(e) => {
-                if (e.target.value.trim() && e.target.value !== event.name) {
-                  saveFields({ name: e.target.value.trim() });
-                }
-              }}
+              value={detailsDraft.name}
+              onChange={(e) => setDetailsDraft((draft) => ({ ...draft, name: e.target.value }))}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Event type</Label>
-              <Select defaultValue={event.event_type || "party"} onValueChange={(value) => saveFields({ event_type: value })}>
+              <Select
+                value={detailsDraft.event_type}
+                onValueChange={(value) => setDetailsDraft((draft) => ({ ...draft, event_type: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -336,8 +289,8 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
               <Label>Venue / campus location</Label>
               <Input
                 placeholder="e.g., Main Auditorium, Babcock University"
-                defaultValue={event.location_value || ""}
-                onBlur={(e) => saveFields({ location_value: e.target.value || null })}
+                value={detailsDraft.location_value}
+                onChange={(e) => setDetailsDraft((draft) => ({ ...draft, location_value: e.target.value }))}
               />
             </div>
           </div>
@@ -406,9 +359,14 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
             <Textarea
               rows={4}
               placeholder="Describe the event vibe, activities, performers, dress code, ticket benefits, and entry details."
-              defaultValue={event.description || ""}
-              onBlur={(e) => saveFields({ description: e.target.value || null })}
+              value={detailsDraft.description}
+              onChange={(e) => setDetailsDraft((draft) => ({ ...draft, description: e.target.value }))}
             />
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" onClick={saveDetails} disabled={!detailsChanged || savingDetails}>
+              {savingDetails ? "Saving..." : "Save details"}
+            </Button>
           </div>
         </CardContent>
       </Card>
