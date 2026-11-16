@@ -103,13 +103,14 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
 
     try {
       const optimizedFile = await optimizeEventImage(file);
-      const path = `event-images/${event.id}.webp`;
+      const extension = optimizedFile.name.split(".").pop();
+      const path = `event-images/${event.id}.${extension}`;
       const { error } = await supabase.storage
         .from("event-assets")
         .upload(path, optimizedFile, {
           upsert: true,
           cacheControl: "31536000",
-          contentType: "image/webp",
+          contentType: optimizedFile.type,
         });
 
       if (error) throw error;
@@ -143,13 +144,14 @@ export default function EventQuickInfo({ event, onUpdate, onScheduleUpdate }: Pr
       const urls: string[] = [];
       for (const file of files) {
         const optimizedFile = await optimizeEventImage(file);
-        const path = `event-gallery/${event.id}/${crypto.randomUUID()}.webp`;
+        const extension = optimizedFile.name.split(".").pop();
+        const path = `event-gallery/${event.id}/${crypto.randomUUID()}.${extension}`;
         const { error } = await supabase.storage
           .from("event-assets")
           .upload(path, optimizedFile, {
             upsert: false,
             cacheControl: "31536000",
-            contentType: "image/webp",
+            contentType: optimizedFile.type,
           });
         if (error) throw error;
 

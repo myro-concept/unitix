@@ -50,23 +50,31 @@ export async function optimizeEventImage(file: File): Promise<File> {
 
     context.drawImage(image, 0, 0, dimensions.width, dimensions.height);
 
-    const webpBlob = await new Promise<Blob>((resolve, reject) => {
+    const webpBlob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Could not convert the image to WebP."));
-        }
+        resolve(blob);
       }, "image/webp", WEBP_QUALITY);
     });
 
-    if (webpBlob.type !== "image/webp") {
-      throw new Error("This browser could not convert the image to WebP.");
+    const outputType = webpBlob?.type === "image/webp" ? "image/webp" : file.type;
+    let outputBlob = webpBlob?.type === "image/webp" ? webpBlob : null;
+    if (!outputBlob) {
+      outputBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, outputType, WEBP_QUALITY);
+      });
+    }
+
+    if (!outputBlob || outputBlob.type !== outputType) {
+      throw new Error("Could not convert the image to a supported format.");
     }
 
     const baseName = file.name.replace(/\.[^.]+$/, "") || "event-poster";
-    return new File([webpBlob], `${baseName}.webp`, {
-      type: "image/webp",
+    const extension =
+      outputBlob.type === "image/webp" ? "webp" : file.type === "image/jpeg" ? "jpg" : "png";
+    return new File([outputBlob], `${baseName}.${extension}`, {
+      type: outputBlob.type,
       lastModified: Date.now(),
     });
   } finally {
